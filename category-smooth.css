@@ -1,1 +1,276 @@
-.field-label-row button{display:inline-flex;align-items:center;gap:6px;padding:5px 0!important}.field-label-row button i{width:18px;height:18px;display:grid;place-items:center;border:1px solid currentColor;border-radius:3px;font-style:normal;font-size:13px;transition:transform .2s ease}.field-label-row button b{font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace}.field-label-row button[aria-expanded="true"] i{transform:rotate(45deg)}.category-manager{display:block!important;max-height:0;margin-top:0!important;padding:0 11px!important;overflow:hidden;opacity:0;border-color:transparent!important;transform:translateY(-5px);transition:max-height .28s ease,opacity .18s ease,transform .22s ease,margin .22s ease,padding .22s ease,border-color .22s ease}.category-manager.open{max-height:360px;margin-top:9px!important;padding:12px!important;opacity:1;transform:translateY(0);border-color:var(--line)!important}.manager-heading{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:11px}.manager-heading>div{display:flex;align-items:center;gap:8px}.manager-heading b{font-size:12px}.manager-heading span{padding:2px 6px;border:1px solid var(--line);border-radius:3px;color:var(--muted);font:9px ui-monospace,SFMono-Regular,Menlo,monospace}.manager-heading small{color:var(--muted);font-size:9px}.add-category{height:40px;grid-template-columns:1fr 78px!important;gap:0!important;border:1px solid var(--line);border-radius:4px;overflow:hidden}.add-category input{height:100%;border:0!important;border-radius:0!important;padding:0 11px!important}.add-category button{height:100%;border-radius:0!important;border-left:1px solid var(--line)!important;display:flex;align-items:center;justify-content:center;gap:4px}.category-list{gap:5px!important;margin-top:11px!important;max-height:164px!important}.category-item{min-height:38px;padding:7px 8px 7px 11px!important;border:1px solid var(--line);background:transparent!important}.category-info{display:flex;align-items:center;gap:8px;min-width:0}.category-color{width:7px;height:7px;flex:0 0 7px;background:var(--accent)}.category-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.category-usage{margin-left:auto;color:var(--muted);font:9px ui-monospace,SFMono-Regular,Menlo,monospace}.category-item button{margin-left:8px}.category-item button:disabled{font-size:0}.category-item button:disabled::after{content:"KİLİTLİ";font:700 8px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}body[data-theme="pink"] .category-manager.open{border-color:#b86489!important;background:#dfa2bb!important}body[data-theme="pink"] .add-category{border-color:#b86489}body[data-theme="pink"] .add-category button{background:#a91f59!important;color:#fff!important;border-color:#8e174a!important}body[data-theme="pink"] .category-item{border-color:#c47798!important}body[data-theme="pink"] .category-color{background:#8f174a}@media(prefers-reduced-motion:reduce){.category-manager,.field-label-row button i{transition:none!important}}
+/* Category smooth transitions and clean UI */
+.field-label-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font: 700 11px monospace;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all .15s ease;
+}
+
+.field-label-row button:hover {
+  background: rgba(0, 237, 159, 0.08);
+}
+
+.field-label-row button i {
+  font-style: normal;
+  display: inline-block;
+  transition: transform .2s ease;
+}
+
+.field-label-row button[aria-expanded="true"] i {
+  transform: rotate(45deg);
+}
+
+.category-manager {
+  display: block;
+  max-height: 0;
+  margin-top: 0;
+  padding: 0 14px;
+  overflow: hidden;
+  opacity: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #090d14;
+  transform: translateY(-4px);
+  transition: max-height .25s ease, opacity .2s ease, transform .2s ease, margin .2s ease, padding .2s ease, border-color .2s ease;
+}
+
+.category-manager.open {
+  max-height: 480px;
+  margin-top: 10px;
+  padding: 14px;
+  opacity: 1;
+  transform: translateY(0);
+  border-color: var(--line);
+}
+
+.manager-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.manager-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.manager-heading b {
+  font-size: 13px;
+  color: var(--text);
+}
+
+#category-count {
+  padding: 2px 8px;
+  border: 1px solid rgba(0, 237, 159, 0.3);
+  background: rgba(0, 237, 159, 0.08);
+  border-radius: 4px;
+  color: var(--accent);
+  font: 700 10px monospace;
+}
+
+.manager-heading small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.add-category {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 12px;
+}
+
+.add-category input {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  color: var(--text) !important;
+}
+
+.add-category input:focus {
+  outline: none;
+  box-shadow: none !important;
+}
+
+.add-category button {
+  border: 0 !important;
+  border-left: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  background: var(--accent) !important;
+  color: #04120c !important;
+  font: 700 12px Inter, system-ui, sans-serif !important;
+  padding: 0 16px !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity .15s ease;
+  white-space: nowrap;
+}
+
+.add-category button:hover {
+  opacity: .88;
+}
+
+.category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background .12s ease;
+}
+
+.category-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.category-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.category-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.category-name {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-usage {
+  font: 700 10px monospace;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-left: auto;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.category-item button {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 100, 100, 0.25);
+  background: rgba(255, 50, 50, 0.1);
+  color: #ff6b7a;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all .15s ease;
+}
+
+.category-item button:hover:not(:disabled) {
+  background: rgba(255, 50, 50, 0.25);
+  border-color: #ff6b7a;
+  color: #fff;
+}
+
+.category-item button:disabled {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  opacity: .4;
+  cursor: not-allowed;
+  font-size: 12px;
+}
+
+/* Pink Theme Overrides */
+body[data-theme="pink"] .category-manager.open {
+  background: #f7c3d7 !important;
+  border-color: #cb779b !important;
+}
+
+body[data-theme="pink"] .field-label-row button:hover {
+  background: rgba(181, 31, 96, 0.1);
+}
+
+body[data-theme="pink"] #category-count {
+  border-color: #c9286e;
+  background: rgba(201, 40, 110, 0.12);
+  color: #a51654;
+}
+
+body[data-theme="pink"] .add-category {
+  border-color: #c8759a;
+  background: #fdf0f5;
+}
+
+body[data-theme="pink"] .add-category button {
+  background: #c9286e !important;
+  color: #fff !important;
+  border-color: #b51f60 !important;
+}
+
+body[data-theme="pink"] .category-item {
+  border-color: #d68eb0;
+  background: #fce8f1;
+}
+
+body[data-theme="pink"] .category-item:hover {
+  background: #fae0ed;
+}
+
+body[data-theme="pink"] .category-color {
+  background: #c9286e;
+}
+
+body[data-theme="pink"] .category-usage {
+  background: #f3c2d6;
+  border-color: #cf7fa2;
+  color: #722046;
+}
+
+body[data-theme="pink"] .category-item button {
+  border-color: #d8829f;
+  background: #f5b9ce;
+  color: #9c1f4c;
+}
+
+body[data-theme="pink"] .category-item button:hover:not(:disabled) {
+  background: #b51f60;
+  color: #fff;
+}

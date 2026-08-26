@@ -1,1 +1,228 @@
-.topic-page{width:min(1180px,calc(100% - 36px));height:min(850px,calc(100vh - 40px));max-width:none;max-height:none;overflow:hidden}.topic-page form{height:100%;padding:0;display:grid;grid-template-rows:auto 1fr auto}.editor-header{display:flex;align-items:center;justify-content:space-between;padding:24px 28px;border-bottom:1px solid var(--line);background:#0a0e13}.editor-header h2{font-size:28px;line-height:1;margin:0}.editor-header .eyebrow{margin-bottom:9px}.editor-header-actions{display:flex;align-items:center;gap:18px}.editor-header-actions>span{color:#626d79;font:11px monospace}.editor-header .icon-button{font-size:28px;padding:5px 10px}.editor-layout{display:grid;grid-template-columns:340px 1fr;min-height:0}.topic-sidebar{border-right:1px solid var(--line);padding:28px;background:#0b0f15;overflow:auto}.field-number{width:42px;height:42px;display:grid;place-items:center;border:1px solid #305b4d;color:var(--accent);font:700 12px monospace;margin-bottom:28px}.topic-sidebar label{margin-bottom:22px}.topic-sidebar input,.topic-sidebar select{padding:13px}.editor-status{margin-top:24px}.editor-status>span{display:block;color:#aeb5bd;font:700 11px monospace;letter-spacing:.05em;margin-bottom:10px}.editor-status .status-buttons{flex-direction:column}.editor-status .status-button{text-align:left;padding:10px 12px}.sidebar-tip{margin-top:34px;border-top:1px solid var(--line);padding-top:20px;color:#66717e;font-size:12px}.sidebar-tip b{color:var(--accent);font:700 10px monospace;letter-spacing:.12em}.sidebar-tip p{margin:8px 0 0}.notes-editor{display:grid;grid-template-rows:auto 1fr;min-width:0;background:#0d1117}.notes-toolbar{height:54px;border-bottom:1px solid var(--line);padding:0 22px;display:flex;align-items:center;justify-content:space-between;color:#7b8591;font:700 10px monospace;letter-spacing:.1em}.green-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(0,237,159,.55);margin-right:8px}.notes-toolbar b{color:#c3c9cf}.notes-editor textarea{height:100%;resize:none;border:0;border-radius:0;background:#0d1117;padding:30px 34px;color:#e9edef;font:16px/1.8 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.notes-editor textarea::placeholder{color:#3f4955}.notes-editor textarea:focus{box-shadow:inset 0 0 0 1px #245c49}.editor-footer{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;padding:18px 28px;border-top:1px solid var(--line);background:#0a0e13}.save-button{min-width:190px}@media(max-width:800px){.topic-page{width:100%;height:100vh;border-radius:0}.editor-layout{grid-template-columns:1fr;overflow:auto}.topic-sidebar{border-right:0;border-bottom:1px solid var(--line)}.editor-status .status-buttons{flex-direction:row}.notes-editor{min-height:520px}.editor-footer{grid-template-columns:1fr 1fr}.editor-footer>span{display:none}.save-button{min-width:0}}
+.topic-page {
+  width: min(1360px, calc(100% - 48px));
+  height: min(880px, calc(100vh - 48px));
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.topic-page form {
+  height: 100%;
+  padding: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--line);
+  background: #0a0e13;
+}
+
+.editor-header h2 {
+  font-size: 28px;
+  line-height: 1;
+  margin: 0;
+}
+
+.editor-header .eyebrow {
+  margin-bottom: 8px;
+}
+
+.editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.editor-header-actions > span {
+  color: #626d79;
+  font: 11px monospace;
+}
+
+.editor-header .icon-button {
+  font-size: 28px;
+  padding: 5px 10px;
+}
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  min-height: 0;
+}
+
+.topic-sidebar {
+  border-right: 1px solid var(--line);
+  padding: 32px;
+  background: #0b0f15;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.field-number {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #305b4d;
+  color: var(--accent);
+  font: 700 13px monospace;
+  margin-bottom: 28px;
+  border-radius: 8px;
+}
+
+.topic-sidebar label {
+  display: block;
+  margin-bottom: 24px;
+  color: #aeb5bd;
+  font: 700 11px monospace;
+  letter-spacing: .05em;
+}
+
+.topic-sidebar input,
+.topic-sidebar select {
+  width: 100%;
+  padding: 13px 15px;
+  margin-top: 8px;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.editor-status {
+  margin-top: 26px;
+}
+
+.editor-status > span {
+  display: block;
+  color: #aeb5bd;
+  font: 700 11px monospace;
+  letter-spacing: .05em;
+  margin-bottom: 10px;
+}
+
+.editor-status .status-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.editor-status .status-button {
+  text-align: center;
+  padding: 11px 8px;
+  font-size: 12px;
+  border-radius: 7px;
+}
+
+.sidebar-tip {
+  margin-top: 36px;
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+  color: #66717e;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.sidebar-tip b {
+  color: var(--accent);
+  font: 700 10px monospace;
+  letter-spacing: .12em;
+}
+
+.sidebar-tip p {
+  margin: 8px 0 0;
+}
+
+.notes-editor {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  background: #0d1117;
+}
+
+.notes-toolbar {
+  height: 56px;
+  border-bottom: 1px solid var(--line);
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #7b8591;
+  font: 700 11px monospace;
+  letter-spacing: .1em;
+}
+
+.green-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(0, 237, 159, .55);
+  margin-right: 8px;
+}
+
+.notes-toolbar b {
+  color: #c3c9cf;
+}
+
+.notes-editor textarea {
+  height: 100%;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  background: #0d1117;
+  padding: 32px 36px;
+  color: #e9edef;
+  font: 16px/1.8 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.notes-editor textarea::placeholder {
+  color: #3f4955;
+}
+
+.notes-editor textarea:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1px #245c49;
+}
+
+.editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 32px;
+  border-top: 1px solid var(--line);
+  background: #0a0e13;
+}
+
+.footer-spacer {
+  margin-right: auto;
+}
+
+.save-button {
+  min-width: 210px;
+}
+
+@media (max-width: 960px) {
+  .topic-page {
+    width: 100%;
+    height: 100vh;
+    border-radius: 0;
+  }
+  .editor-layout {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .topic-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 24px;
+  }
+  .notes-editor {
+    min-height: 480px;
+  }
+}

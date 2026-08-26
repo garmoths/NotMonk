@@ -113,7 +113,7 @@ function openForm(topic = null) {
   renderEditorStatus();
   $("#notes").placeholder = "Notlarını buraya yaz…\n\n• Konuyu kendi cümlelerinle açıkla.\n• Önemli noktaları ve örnekleri ekle.\n• Anlamadığın yerleri not al.\n• Bir sonraki adımını belirle.";
   $("#note-count").textContent = $("#notes").value.length;
-  $("#save-hint").textContent = topic ? "Düzenlemeye hazır" : "Yeni çalışma sayfası";
+  $("#save-hint").textContent = topic ? "Düzenlemeye hazır" : "";
   isEditorDirty = false;
   dialog.showModal();
   $("#title").focus();
@@ -198,15 +198,19 @@ function renderCategoryManager() {
     const row = document.createElement("div");
     row.className = "category-item";
     const usage = state.topics.filter(t => t.category === category).length;
-    row.innerHTML = `<div class="category-info"><i class="category-color"></i><span class="category-name"></span><span class="category-usage"></span></div><button type="button" aria-label="${category} alanını sil">×</button>`;
+    row.innerHTML = `<div class="category-info"><i class="category-color"></i><span class="category-name"></span><span class="category-usage"></span></div><button type="button" aria-label="${category} alanını sil"></button>`;
     row.querySelector(".category-name").textContent = category;
     row.querySelector(".category-usage").textContent = usage ? `${usage} konu` : "boş";
     const btn = row.querySelector("button");
     if (usage > 0) {
       btn.disabled = true;
-      btn.title = "Önce bu alana ait konuların alanını değiştir";
+      btn.innerHTML = "🔒";
+      btn.title = "Bu alana ait konular olduğu için silinemez";
+    } else {
+      btn.innerHTML = "×";
+      btn.title = "Alanı sil";
+      btn.onclick = () => removeCategory(category);
     }
-    btn.onclick = () => removeCategory(category);
     return row;
   }));
 }
@@ -275,19 +279,11 @@ function syncControls() {
 }
 
 function getVisible() {
-  const [key, direction] = state.sort.split("-");
-  return state.topics
-    .filter(t =>
-      (state.category === "Tümü" || t.category === state.category) &&
-      (state.status === "all" || t.status === state.status) &&
-      `${t.title} ${t.notes}`.toLocaleLowerCase("tr").includes(state.query)
-    )
-    .sort((a, b) => {
-      let av = a[key], bv = b[key];
-      if (key === "status") { av = STATUS_ORDER[av]; bv = STATUS_ORDER[bv]; }
-      const result = typeof av === "string" ? av.localeCompare(bv, "tr") : av - bv;
-      return direction === "desc" ? -result : result;
-    });
+  return state.topics.filter(t =>
+    (state.category === "Tümü" || t.category === state.category) &&
+    (state.status === "all" || t.status === state.status) &&
+    `${t.title} ${t.notes}`.toLocaleLowerCase("tr").includes(state.query)
+  );
 }
 
 function toggleSort(key) {
