@@ -30,7 +30,9 @@ To update after pulling new changes, go back to `chrome://extensions` and click 
 
 **Toolbar icon** — Click the NotMonk icon in the browser toolbar. The app opens as a popup. Click the expand button in the top-right corner of the popup to open it as a full tab.
 
-**Address bar shortcut** — Type `nm` in the address bar, press `Space` or `Tab`, then press `Enter`. NotMonk opens in a new tab.
+**Address bar shortcut** — Type `nm` in the address bar, press `Space` or `Tab`, then press `Enter`. NotMonk opens immediately in a new tab.
+
+**Keyboard shortcut** — Press `Option + N` (Mac) or `Alt + N` (Windows) anywhere in the browser to instantly open NotMonk.
 
 ---
 
