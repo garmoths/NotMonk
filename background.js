@@ -1,4 +1,4 @@
-// NotMonk Omnibox Service Worker
+// NotMonk Background Service Worker
 
 function setSuggestion() {
   chrome.omnibox.setDefaultSuggestion({
@@ -6,7 +6,6 @@ function setSuggestion() {
   });
 }
 
-// Service worker başladığında ve omnibox'a girildiğinde default suggestion'ı ayarla
 chrome.runtime.onInstalled.addListener(setSuggestion);
 chrome.runtime.onStartup.addListener(setSuggestion);
 setSuggestion();
@@ -15,7 +14,7 @@ chrome.omnibox.onInputStarted.addListener(() => {
   setSuggestion();
 });
 
-chrome.omnibox.onInputChanged.addListener((text, suggest) => {
+chrome.omnibox.onInputChanged.addListener((_text, suggest) => {
   suggest([
     {
       content: 'open',
@@ -24,7 +23,7 @@ chrome.omnibox.onInputChanged.addListener((text, suggest) => {
   ]);
 });
 
-chrome.omnibox.onInputEntered.addListener((text, disposition) => {
+chrome.omnibox.onInputEntered.addListener((_text, disposition) => {
   const url = chrome.runtime.getURL('index.html');
 
   if (disposition === 'currentTab') {
@@ -39,5 +38,12 @@ chrome.omnibox.onInputEntered.addListener((text, disposition) => {
     chrome.tabs.create({ url, active: false });
   } else {
     chrome.tabs.create({ url, active: true });
+  }
+});
+
+// Klavye kısayolu (Alt+N veya Option+N) ile her yerden açma
+chrome.commands.onCommand.addListener((command) => {
+  if (command === 'open_notmonk') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
   }
 });

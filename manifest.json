@@ -25,5 +25,14 @@
       "48": "assets/icon-48.png",
       "128": "assets/icon-128.png"
     }
+  },
+  "commands": {
+    "open_notmonk": {
+      "suggested_key": {
+        "default": "Alt+N",
+        "mac": "Alt+N"
+      },
+      "description": "NotMonk uygulamasını aç"
+    }
   }
 }
