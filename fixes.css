@@ -1,0 +1,1 @@
+.editor-footer #delete-topic{grid-column:1}.editor-footer .footer-spacer{grid-column:2}.editor-footer .cancel-button{grid-column:3;width:110px;min-width:110px}.editor-footer .save-button{grid-column:4}@media(max-width:800px){.editor-footer .cancel-button{grid-column:3}.editor-footer .save-button{grid-column:1/-1;width:100%}}

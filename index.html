@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta name="generator" content="HTML Tidy for HTML5 for Apple macOS version 5.8.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NotMonk</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="table.css">
+    <link rel="stylesheet" href="editor.css"><link rel="stylesheet" href="manager.css"><link rel="stylesheet" href="fixes.css"><link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="pink.css"><link rel="stylesheet" href="pink-fixes.css"><link rel="stylesheet" href="responsive-fixes.css"><link rel="stylesheet" href="polish.css"><link rel="stylesheet" href="list.css"><link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="status.css"><link rel="stylesheet" href="reference.css"><link rel="stylesheet" href="status-selection.css"><link rel="stylesheet" href="status-neutral.css"><link rel="stylesheet" href="category-smooth.css"><link rel="stylesheet" href="branding.css">
+</head>
+<body>
+  <nav class="nav-shell">
+    <div class="nav-inner">
+      <a class="brand" href="#"><img class="brand-logo" src="assets/notmonk-logo.png" alt=""><strong>NotMonk</strong></a>
+      <div class="nav-stats">
+        <span><b id="nav-total">0</b>KONU</span><span><b id="nav-active">0</b>AKTİF</span><span><b id="nav-done">0</b>ÖĞRENİLDİ</span>
+      </div><div class="nav-actions"><button id="expand-tab" class="icon-button expand-button" type="button" aria-label="Tam ekranda aç" title="Tam sekmede aç">⤢</button><button id="theme-toggle" class="theme-toggle" type="button" aria-label="Temayı değiştir"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-copy"><small>GÖRÜNÜM</small><b>Pembe tema</b></span></button><button id="open-form" class="primary add-topic-button"><span class="add-icon" aria-hidden="true">＋</span><span class="add-copy"><small>YENİ KAYIT</small><b>Konu ekle</b></span><kbd>N</kbd></button></div>
+    </div>
+  </nav>
+  <main class="app-shell">
+    <section class="dashboard-head">
+      <div>
+        <span class="section-code">ÖĞRENME TABLOSU</span>
+        <h1>Konular</h1>
+      </div><select id="sort-select" class="hidden" aria-hidden="true"><option value="updatedAt-desc">Elle sıralama</option></select>
+      <aside class="compact-progress"><div class="progress-heading"><div><span>GENEL İLERLEME</span><small>Öğrenme yolculuğun</small></div><strong id="progress-value">0%</strong></div><div class="progress-track"><i id="progress-bar"></i></div><div class="progress-details"><span><i class="detail-dot done-dot"></i><b id="done-count">0 öğrenildi</b></span><span><i class="detail-dot remaining-dot"></i><b id="remaining-count">0 kaldı</b></span></div></aside>
+    </section>
+    <section class="workspace">
+      <div class="control-bar">
+        <label class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Konu veya not ara"></label><label class="control-select"><span>ALAN</span><select id="category-select">
+          <option value="Tümü">
+            Tümü
+          </option>
+        </select></label><label class="control-select"><span>DURUM</span><select id="status-filter">
+          <option value="all">
+            Tümü
+          </option>
+          <option value="todo">
+            Başlamadım
+          </option>
+          <option value="learning">
+            Öğreniyorum
+          </option>
+          <option value="done">
+            Öğrendim
+          </option>
+        </select></label>
+      </div>
+      <div class="result-line">
+        <span><b id="result-count">0</b> konu gösteriliyor</span><button id="clear-filters">Filtreleri temizle</button>
+      </div>
+      <section id="empty-state" class="empty hidden">
+        <span>＋</span>
+        <h2>Tablon henüz boş</h2>
+        <p>İlk konunu ekleyerek başla.</p><button id="empty-add" class="primary">İlk konuyu ekle</button>
+      </section>
+      <section id="no-results" class="empty hidden">
+        <span>⌕</span>
+        <h2>Sonuç bulunamadı</h2>
+        <p>Aramanı veya filtrelerini değiştirmeyi dene.</p>
+      </section>
+      <section id="table-view" class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th class="drag-head"></th>
+              <th class="number-head">#</th>
+              <th>KONU</th>
+              <th>ALAN</th>
+              <th class="status-head">DURUM</th>
+              <th>NOT</th>
+              <th>GÜNCELLEME</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="topic-table-body"></tbody>
+        </table>
+      </section><nav id="pagination" class="pagination" aria-label="Konu sayfaları"></nav>
+    </section>
+  </main>
+  <dialog id="topic-dialog" class="topic-page">
+    <form id="topic-form" method="dialog" name="topic-form">
+      <header class="editor-header">
+        <div>
+          <p class="eyebrow">KONU ÇALIŞMA SAYFASI</p>
+          <h2 id="dialog-title">Konu ekle</h2>
+        </div>
+        <div class="editor-header-actions">
+          <span id="save-hint">Değişiklikler kaydedilmedi</span><button id="close-dialog" class="icon-button" type="button" aria-label="Kapat">×</button>
+        </div>
+      </header><input id="edit-id" type="hidden">
+      <div class="editor-layout">
+        <aside class="topic-sidebar">
+          <div class="field-number">
+            01
+          </div><label>KONU BAŞLIĞI<input id="title" required="" maxlength="120" placeholder="Örn. HTTP istek ve cevapları"></label>
+          <div class="category-field">
+            <div class="field-label-row"><span>ALAN</span><button id="toggle-category-manager" type="button" aria-expanded="false"><i>＋</i><b>Alanları yönet</b></button></div>
+            <select id="category"></select>
+            <section id="category-manager" class="category-manager">
+              <div class="manager-heading"><div><b>Alanların</b><span id="category-count">0 alan</span></div><small>Kullanılan alanlar korunur</small></div>
+              <div class="add-category"><input id="new-category" maxlength="30" placeholder="Yeni bir alan yaz…"><button id="add-category" type="button"><span>＋</span> Ekle</button></div>
+              <div id="category-list" class="category-list"></div>
+            </section>
+          </div><label>KAYNAK BAĞLANTISI<input id="resource" type="url" placeholder="https://..."></label>
+          <section class="editor-status">
+            <span>DURUM</span>
+            <div id="editor-status-buttons" class="status-buttons"></div>
+          </section>
+          <div class="sidebar-tip">
+            <b>İPUCU</b>
+            <p>Tanım kopyalamak yerine konuyu kendi cümlelerinle anlat. Örnekler ve anlamadığın noktalar ekle.</p>
+          </div>
+        </aside>
+        <section class="notes-editor">
+          <div class="notes-toolbar">
+            <div>
+              NOT DEFTERİ
+            </div><span><b id="note-count">0</b> karakter</span>
+          </div>
+          <textarea id="notes" maxlength="50000" spellcheck="true" placeholder="Notlarını buraya yaz…\n\n• Konu neyi çözüyor?\n• Nasıl çalışıyor?\n• Kendi örneğin nedir?\n• Nerede takıldın?\n• Sonraki adımın ne?"></textarea>
+        </section>
+      </div>
+      <footer class="editor-footer">
+        <button id="delete-topic" class="danger hidden" type="button">Konuyu sil</button><div class="footer-spacer"></div><button id="cancel-dialog" class="secondary cancel-button" type="button">Vazgeç</button><button class="primary save-button" type="submit">Değişiklikleri kaydet</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="confirm-dialog" class="confirm-dialog"><div class="confirm-icon">!</div><h2 id="confirm-title">Emin misin?</h2><p id="confirm-message"></p><div class="confirm-actions"><button id="confirm-cancel" class="secondary" type="button">Geri dön</button><button id="confirm-accept" class="confirm-danger" type="button">Onayla</button></div></dialog>
+  <script src="app.js"></script>
+</body>
+</html>
