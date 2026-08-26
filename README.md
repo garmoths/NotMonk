@@ -1,8 +1,6 @@
 # NotMonk
 
-A browser extension for tracking what you are learning. Add topics, take notes, set a status, and filter by category.
-
-Works on Chrome and Brave.
+[Türkçe](#türkçe) | [English](#english)
 
 ---
 
@@ -12,58 +10,62 @@ Works on Chrome and Brave.
 
 ---
 
-## Installation
+## Türkçe
 
-Chrome and Brave do not yet support installing this from the Web Store. Load it manually:
+Öğrendiklerinizi, notlarınızı ve ilerlemenizi tek bir yerde takip etmenizi sağlayan Chrome ve Brave tarayıcı eklentisi.
 
-1. Download or clone this repository
-2. Open `chrome://extensions` in your browser
-3. Enable **Developer mode** (top right toggle)
-4. Click **Load unpacked** and select the repository folder
-5. The NotMonk icon appears in your toolbar
+### Kurulum
 
-To update after pulling new changes, go back to `chrome://extensions` and click the refresh icon on the NotMonk card.
+1. Bu repoyu indirin veya klonlayın.
+2. Tarayıcınızda `chrome://extensions` adresini açın.
+3. Sağ üstteki **Geliştirici modu** seçeneğini açın.
+4. **Paketlenmemiş öge yükle** butonuna tıklayıp bu klasörü seçin.
 
----
+### Nasıl Açılır?
 
-## Opening NotMonk
+- **Klavye kısayolu:** `Option + N` (Mac) veya `Alt + N` (Windows)
+- **Adres çubuğu:** `nm` yazın -> iki kez `Boşluk` -> `Enter`
+- **Eklenti ikonu:** Araç çubuğundaki ikona tıklayın (sağ üstteki buton ile tam sekme yapabilirsiniz)
 
-**Toolbar icon** — Click the NotMonk icon in the browser toolbar. The app opens as a popup. Click the expand button in the top-right corner of the popup to open it as a full tab.
+### Özellikler
 
-**Address bar shortcut** — Type `nm` in the address bar, press `Space` or `Tab`, then press `Enter`. NotMonk opens immediately in a new tab.
-
-**Keyboard shortcut** — Press `Option + N` (Mac) or `Alt + N` (Windows) anywhere in the browser to instantly open NotMonk.
-
----
-
-## Basic usage
-
-**Adding a topic** — Click **Konu ekle** or press `N`. Fill in the title, choose a category, optionally add a resource URL and notes, then save.
-
-**Changing status** — Each row has three status buttons: Başlamadım, Öğreniyorum, Öğrendim. Click any of them directly in the table without opening the editor.
-
-**Notes** — Open a topic by clicking its row or the Düzenle button. The right panel is a free-form text area for notes.
-
-**Filtering** — Use the search box to filter by title or note content. Use the Alan and Durum dropdowns to narrow by category or status.
-
-**Drag to reorder** — Grab the handle on the left side of any row and drag it to a new position.
-
-**Categories** — Inside the topic editor, click **Alanları yönet** to add or remove categories. A category can only be deleted when no topics are assigned to it.
+- **Konu Ekleme:** `Konu ekle` butonu veya `N` tuşu ile yeni kayıt oluşturun.
+- **Durum Takibi:** Tablodan doğrudan `Başlamadım`, `Öğreniyorum`, `Öğrendim` durumunu seçin.
+- **Sıralama:** Konuları sol taraftaki tutamaktan sürükleyerek yeniden sıralayın.
+- **Alan Yönetimi:** Konuları kategorilere ayırın ve filtreleyin.
+- **Temalar:** Sağ üstten Koyu ve Pembe tema arasında geçiş yapın.
+- **Gizlilik:** Tüm veriler `chrome.storage.local` üzerinde yerel saklanır, sunucuya veri gitmez.
 
 ---
 
-## Themes
+## English
 
-Click the **Görünüm** button in the top-right corner to switch between the dark and pink themes.
+A Chrome and Brave browser extension to track topics you are learning, take notes, and manage progress.
+
+### Installation
+
+1. Download or clone this repository.
+2. Open `chrome://extensions` in your browser.
+3. Enable **Developer mode** in the top right.
+4. Click **Load unpacked** and select this folder.
+
+### How to Open
+
+- **Keyboard shortcut:** `Option + N` (Mac) or `Alt + N` (Windows)
+- **Address bar:** Type `nm` -> press `Space` twice -> press `Enter`
+- **Toolbar icon:** Click the NotMonk icon in the toolbar (click expand icon for full tab)
+
+### Features
+
+- **Add Topics:** Click `Konu ekle` or press `N` to create a topic.
+- **Track Status:** Change status directly in the table: Not Started, Learning, Mastered.
+- **Drag to Reorder:** Grab the left handle and drag rows to rearrange.
+- **Categories:** Organize topics with custom categories and filters.
+- **Themes:** Toggle between Dark and Pink themes in the top navigation.
+- **Privacy:** All data is stored locally via `chrome.storage.local`. No external servers.
 
 ---
 
-## Data
-
-All data is stored locally in your browser using `chrome.storage.local`. Nothing is sent to any server. Clearing the extension's storage will delete your topics.
-
----
-
-## License
+### License
 
 MIT
