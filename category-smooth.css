@@ -31,20 +31,20 @@
   display: block;
   max-height: 0;
   margin-top: 0;
-  padding: 0 14px;
+  padding: 0 16px;
   overflow: hidden;
   opacity: 0;
   border: 1px solid transparent;
-  border-radius: 10px;
-  background: #090d14;
+  border-radius: 12px;
+  background: #080c12;
   transform: translateY(-4px);
   transition: max-height .25s ease, opacity .2s ease, transform .2s ease, margin .2s ease, padding .2s ease, border-color .2s ease;
 }
 
 .category-manager.open {
-  max-height: 480px;
-  margin-top: 10px;
-  padding: 14px;
+  max-height: 520px;
+  margin-top: 12px;
+  padding: 16px;
   opacity: 1;
   transform: translateY(0);
   border-color: var(--line);
@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .manager-heading > div {
@@ -88,22 +88,28 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.03);
-  margin-bottom: 12px;
+  background: #0f1520;
+  margin-bottom: 14px;
 }
 
 .add-category input {
   flex: 1;
   min-width: 0;
+  margin: 0 !important;
   border: 0 !important;
   background: transparent !important;
-  padding: 10px 14px !important;
+  padding: 11px 14px !important;
   font-size: 13px !important;
   color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+.add-category input::placeholder {
+  color: #4a5768 !important;
 }
 
 .add-category input:focus {
-  outline: none;
+  outline: none !important;
   box-shadow: none !important;
 }
 
@@ -114,7 +120,7 @@
   background: var(--accent) !important;
   color: #04120c !important;
   font: 700 12px Inter, system-ui, sans-serif !important;
-  padding: 0 16px !important;
+  padding: 0 18px !important;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -140,15 +146,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 9px 13px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: 7px;
+  background: #0d1219;
   transition: background .12s ease;
 }
 
 .category-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: #121924;
 }
 
 .category-info {
@@ -213,15 +219,15 @@
   background: transparent;
   border-color: transparent;
   color: var(--muted);
-  opacity: .4;
+  opacity: .5;
   cursor: not-allowed;
-  font-size: 12px;
+  font-size: 13px;
 }
 
-/* Pink Theme Overrides */
+/* ─── Pink Theme Seamless Integration ─── */
 body[data-theme="pink"] .category-manager.open {
-  background: #f7c3d7 !important;
-  border-color: #cb779b !important;
+  background: #f4b6ce !important;
+  border-color: #ce7c9f !important;
 }
 
 body[data-theme="pink"] .field-label-row button:hover {
@@ -229,48 +235,69 @@ body[data-theme="pink"] .field-label-row button:hover {
 }
 
 body[data-theme="pink"] #category-count {
-  border-color: #c9286e;
-  background: rgba(201, 40, 110, 0.12);
-  color: #a51654;
+  border-color: #be3271;
+  background: rgba(190, 50, 113, 0.12);
+  color: #8c1444;
 }
 
 body[data-theme="pink"] .add-category {
-  border-color: #c8759a;
-  background: #fdf0f5;
+  border-color: #c96f94 !important;
+  background: #eaa8c2 !important;
+}
+
+body[data-theme="pink"] .add-category input {
+  background: transparent !important;
+  color: #4a1730 !important;
+  box-shadow: none !important;
+}
+
+body[data-theme="pink"] .add-category input::placeholder {
+  color: #8c4e6c !important;
 }
 
 body[data-theme="pink"] .add-category button {
-  background: #c9286e !important;
+  background: #b51f60 !important;
   color: #fff !important;
-  border-color: #b51f60 !important;
+  border-color: #9c154f !important;
+}
+
+body[data-theme="pink"] .add-category button:hover {
+  background: #a21753 !important;
 }
 
 body[data-theme="pink"] .category-item {
-  border-color: #d68eb0;
-  background: #fce8f1;
+  border-color: #ce7ca0 !important;
+  background: #ebb0c7 !important;
 }
 
 body[data-theme="pink"] .category-item:hover {
-  background: #fae0ed;
+  background: #e3a3bc !important;
 }
 
 body[data-theme="pink"] .category-color {
-  background: #c9286e;
+  background: #b51f60 !important;
 }
 
 body[data-theme="pink"] .category-usage {
-  background: #f3c2d6;
-  border-color: #cf7fa2;
-  color: #722046;
+  background: #e19cb7 !important;
+  border-color: #c46e91 !important;
+  color: #64193b !important;
 }
 
 body[data-theme="pink"] .category-item button {
-  border-color: #d8829f;
-  background: #f5b9ce;
-  color: #9c1f4c;
+  border-color: #be6d8d !important;
+  background: #df9cb5 !important;
+  color: #7d1a45 !important;
 }
 
 body[data-theme="pink"] .category-item button:hover:not(:disabled) {
-  background: #b51f60;
-  color: #fff;
+  background: #b51f60 !important;
+  color: #fff !important;
+  border-color: #9c154f !important;
+}
+
+body[data-theme="pink"] .category-item button:disabled {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #8c4e6c !important;
 }
