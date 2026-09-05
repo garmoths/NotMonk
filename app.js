@@ -97,40 +97,6 @@ function bindEvents() {
     });
   }
 
-  const quickTools = $("#notes-quick-tools");
-  if (quickTools) {
-    quickTools.addEventListener("mousedown", e => {
-      const btn = e.target.closest("[data-cmd]");
-      if (!btn) return;
-      e.preventDefault();
-      if (typeof RichEditor !== "undefined") {
-        RichEditor.execCmd(btn.dataset.cmd, btn.dataset.val || null);
-      }
-    });
-  }
-
-  const colorTrigger = $("#color-trigger-btn");
-  const colorPopover = $("#color-palette-popover");
-  if (colorTrigger && colorPopover) {
-    colorTrigger.onclick = e => {
-      e.stopPropagation();
-      colorPopover.classList.toggle("hidden");
-    };
-    colorPopover.addEventListener("click", e => {
-      const swatch = e.target.closest("[data-cmd]");
-      if (!swatch) return;
-      if (typeof RichEditor !== "undefined") {
-        RichEditor.execCmd("color", swatch.dataset.val);
-      }
-      colorPopover.classList.add("hidden");
-    });
-    document.addEventListener("click", e => {
-      if (!colorPopover.contains(e.target) && e.target !== colorTrigger) {
-        colorPopover.classList.add("hidden");
-      }
-    });
-  }
-
   $("#notes").oninput = e => { $("#note-count").textContent = e.target.value.length; markDirty(); };
   ["#title", "#category", "#resource"].forEach(s => $(s).addEventListener("input", markDirty));
   $$('[data-sort]').forEach(b => b.onclick = () => toggleSort(b.dataset.sort));

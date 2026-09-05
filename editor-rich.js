@@ -49,30 +49,44 @@ const RichEditor = (() => {
   function onMouseUp(e) {
     if (e.target.closest('#editor-toolbar')) return;
     setTimeout(() => {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount && !sel.isCollapsed && editorEl.contains(sel.anchorNode)) {
-        savedRange = sel.getRangeAt(0).cloneRange();
-        positionToolbar(sel.getRangeAt(0));
-      } else if (!e.target.closest('#editor-toolbar')) {
-        hideToolbar();
-      }
-    }, 10);
+      checkSelectionAndShowToolbar();
+    }, 20);
+  }
+
+  function checkSelectionAndShowToolbar() {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed && editorEl.contains(sel.anchorNode)) {
+      savedRange = sel.getRangeAt(0).cloneRange();
+      positionToolbar(savedRange);
+    } else {
+      hideToolbar();
+    }
   }
 
   function positionToolbar(range) {
+    if (!range || !toolbarEl) return;
     const rect = range.getBoundingClientRect();
-    const editorRect = editorEl.getBoundingClientRect();
-    const tbRect = toolbarEl.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
 
     toolbarEl.classList.remove('hidden');
-    let top = rect.top - editorRect.top - tbRect.height - 10;
-    let left = rect.left - editorRect.left + (rect.width / 2) - (tbRect.width / 2);
-    // Clamp
-    left = Math.max(0, Math.min(left, editorRect.width - tbRect.width));
-    if (top < 0) top = rect.bottom - editorRect.top + 8;
+    const tbRect = toolbarEl.getBoundingClientRect();
+    const parentEl = toolbarEl.offsetParent || document.body;
+    const parentRect = parentEl.getBoundingClientRect();
 
-    toolbarEl.style.top = top + 'px';
-    toolbarEl.style.left = left + 'px';
+    let top = rect.top - parentRect.top - tbRect.height - 10;
+    let left = rect.left - parentRect.left + (rect.width / 2) - (tbRect.width / 2);
+
+    // Clamp horizontally inside editor wrapper
+    const maxLeft = parentRect.width - tbRect.width - 12;
+    left = Math.max(12, Math.min(left, maxLeft));
+
+    // If toolbar overflows top, place it underneath selection
+    if (top < 8) {
+      top = rect.bottom - parentRect.top + 8;
+    }
+
+    toolbarEl.style.top = Math.round(top) + 'px';
+    toolbarEl.style.left = Math.round(left) + 'px';
   }
 
   function hideToolbar() {
@@ -88,6 +102,17 @@ const RichEditor = (() => {
     const sel = window.getSelection();
     sel.removeAllRanges();
     sel.addRange(savedRange);
+  }
+
+  function getSelectedText() {
+    if (savedRange && !savedRange.collapsed) {
+      return savedRange.toString().trim();
+    }
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed) {
+      return sel.getRangeAt(0).toString().trim();
+    }
+    return '';
   }
 
   // ── Commands ──────────────────────────────────────────────────────────────
@@ -144,8 +169,9 @@ const RichEditor = (() => {
     }
   }
 
-  // ── Block Insertions ──────────────────────────────────────────────────────
+  // ── Block Insertions & Conversions ─────────────────────────────────────────
   function insertCodeBlock(lang = 'python') {
+    const initialText = getSelectedText();
     const wrapper = document.createElement('div');
     wrapper.className = 'code-block-wrap';
     wrapper.contentEditable = 'false';
@@ -192,7 +218,7 @@ const RichEditor = (() => {
     code.className = `language-${lang}`;
     code.contentEditable = 'true';
     code.spellcheck = false;
-    code.textContent = '';
+    code.textContent = initialText;
     pre.appendChild(code);
 
     select.onchange = () => {
@@ -215,12 +241,12 @@ const RichEditor = (() => {
     });
 
     wrapper.append(header, pre);
-    insertBlockAtCaret(wrapper);
-
-    setTimeout(() => code.focus(), 50);
+    replaceSelectionWithBlock(wrapper, code);
+    applyPrism();
   }
 
   function insertTerminalBlock() {
+    const initialText = getSelectedText();
     const wrapper = document.createElement('div');
     wrapper.className = 'terminal-block-wrap';
     wrapper.contentEditable = 'false';
@@ -255,7 +281,7 @@ const RichEditor = (() => {
     const code = document.createElement('code');
     code.contentEditable = 'true';
     code.spellcheck = false;
-    code.textContent = '';
+    code.textContent = initialText;
     pre.appendChild(code);
 
     code.addEventListener('keydown', e => {
@@ -272,29 +298,62 @@ const RichEditor = (() => {
     });
 
     wrapper.append(header, pre);
-    insertBlockAtCaret(wrapper);
-
-    setTimeout(() => code.focus(), 50);
+    replaceSelectionWithBlock(wrapper, code);
   }
 
   function insertQuoteBlock() {
-    const sel = window.getSelection();
-    const text = sel && sel.rangeCount ? sel.getRangeAt(0).toString() : '';
+    const text = getSelectedText();
     const bq = document.createElement('blockquote');
     bq.className = 'rich-quote';
     bq.textContent = text || 'Alıntı...';
-    insertBlockAtCaret(bq, !text);
+    replaceSelectionWithBlock(bq, bq);
   }
 
   function insertInfoBlock() {
+    const text = getSelectedText();
     const div = document.createElement('div');
     div.className = 'info-block';
     div.contentEditable = 'true';
-    div.innerHTML = '💡 Bilgi notu...';
-    insertBlockAtCaret(div, true);
+    div.innerHTML = text ? `💡 ${text}` : '💡 Bilgi notu...';
+    replaceSelectionWithBlock(div, div);
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Block Replacement Helper ──────────────────────────────────────────────
+  function replaceSelectionWithBlock(el, focusEl = null) {
+    const sel = window.getSelection();
+    let range = savedRange || (sel && sel.rangeCount ? sel.getRangeAt(0) : null);
+
+    if (range && !range.collapsed) {
+      let node = range.startContainer;
+      while (node && node.nodeType !== 1) node = node.parentNode;
+      while (node && node.parentElement !== editorEl) node = node.parentElement;
+
+      if (node && node.parentElement === editorEl) {
+        node.replaceWith(el);
+      } else {
+        range.deleteContents();
+        range.insertNode(el);
+      }
+    } else {
+      insertBlockAtCaret(el, false);
+      return;
+    }
+
+    if (!el.nextElementSibling || el.nextElementSibling.tagName === 'DIV') {
+      const p = document.createElement('p');
+      p.innerHTML = '<br>';
+      el.after(p);
+    }
+
+    savedRange = null;
+    hideToolbar();
+    onInput();
+
+    if (focusEl) {
+      setTimeout(() => focusEl.focus(), 40);
+    }
+  }
+
   function insertBlockAtCaret(el, focusEl = false) {
     const sel = window.getSelection();
     let refNode = null;
