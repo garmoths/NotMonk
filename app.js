@@ -1,7 +1,7 @@
 const STATUS = { todo: "Başlamadım", learning: "Öğreniyorum", done: "Öğrendim" };
 const STATUS_ORDER = { todo: 0, learning: 1, done: 2 };
 
-const ROADMAP_VERSION = 2;
+const ROADMAP_VERSION = 3;
 const starterTopics = NOTMONK_ROADMAP.map((topic, index) => ({ ...topic, id: crypto.randomUUID(), status: "todo", updatedAt: Date.now() - index * 1000 }));
 const DEFAULT_CATEGORIES = [...NOTMONK_CATEGORIES];
 
@@ -45,6 +45,8 @@ async function init() {
   state.categories = installRoadmap ? [...DEFAULT_CATEGORIES] : (Array.isArray(saved.categories) ? saved.categories : [...DEFAULT_CATEGORIES]);
   state.topics.forEach(t => { if (!state.categories.includes(t.category)) state.categories.push(t.category); });
   Object.assign(state, saved.preferences || {});
+  state.activeTab = "modules";
+  state.selectedCategory = null;
   
   if (saved.notionConfig) {
     state.notionToken = saved.notionConfig.token || "";
@@ -59,7 +61,8 @@ async function init() {
   bindEnhancements();
   bindListEnhancements();
   applyTheme();
-  render();
+  switchTab("modules");
+  renderStats();
   checkNotionStatusBackground();
 }
 
@@ -357,8 +360,24 @@ function render() {
   renderCategories();
   syncControls();
   if (state.activeTab === "modules" && !state.selectedCategory) {
+    $("#modules-view").classList.remove("hidden");
+    $("#topics-view").classList.add("hidden");
+    $("#back-to-modules").classList.add("hidden");
+    $("#page-section-code").textContent = "MÜFREDAT & ALANLAR";
+    $("#page-title").textContent = "Çalışma Alanları";
     renderModules();
   } else {
+    $("#modules-view").classList.add("hidden");
+    $("#topics-view").classList.remove("hidden");
+    if (state.activeTab === "today") {
+      $("#back-to-modules").classList.add("hidden");
+      $("#page-section-code").textContent = "GÜNLÜK ODAK";
+      $("#page-title").textContent = "Bugün Çalışılacaklar";
+    } else {
+      $("#back-to-modules").classList.remove("hidden");
+      $("#page-section-code").textContent = "ALAN KONULARI";
+      $("#page-title").textContent = state.selectedCategory || "Konular";
+    }
     renderTable();
   }
 }
