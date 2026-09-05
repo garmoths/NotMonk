@@ -9,7 +9,7 @@
     "48": "assets/icon-48.png",
     "128": "assets/icon-128.png"
   },
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "unlimitedStorage", "tabs"],
   "host_permissions": ["https://api.notion.com/*"],
   "background": {
     "service_worker": "background.js"

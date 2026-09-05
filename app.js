@@ -97,9 +97,9 @@ async function init() {
   if (hasNotion) {
     // If Notion is configured or has areas, do NOT install the demo cybersecurity roadmap!
     state.categories = (Array.isArray(saved.categories) ? saved.categories : [])
-      .filter(c => !isDefaultDemoCategory(c) && !c.toLowerCase().includes("notmonk"));
+      .filter(c => !isDefaultDemoCategory(c) && !(c || "").toLocaleLowerCase("tr").includes("notmonk"));
     state.topics = (Array.isArray(saved.topics) ? saved.topics : [])
-      .filter(t => !isDefaultDemoCategory(t.category) && !t.category.toLowerCase().includes("notmonk"));
+      .filter(t => !isDefaultDemoCategory(t.category) && !(t.category || "").toLocaleLowerCase("tr").includes("notmonk"));
   } else {
     const installRoadmap = saved.preferences?.roadmapVersion !== ROADMAP_VERSION;
     state.topics = (installRoadmap ? starterTopics : (Array.isArray(saved.topics) ? saved.topics : starterTopics))
@@ -108,7 +108,7 @@ async function init() {
   }
 
   state.topics.forEach(t => {
-    if (!t.category.toLowerCase().includes("notmonk") && !state.categories.includes(t.category)) {
+    if (t.category && !(t.category).toLocaleLowerCase("tr").includes("notmonk") && !state.categories.includes(t.category)) {
       state.categories.push(t.category);
     }
   });
@@ -1026,7 +1026,7 @@ function syncControls() {
 }
 
 function getVisible() {
-  return state.topics.filter(t => {
+  const filtered = state.topics.filter(t => {
     const plainNotes = (t.notes || "").replace(/<[^>]*>/g, " ");
     const matchesQuery = !state.query || `${t.title} ${plainNotes}`.toLocaleLowerCase("tr").includes(state.query);
     const matchesStatus = state.status === "all" || t.status === state.status;
@@ -1036,17 +1036,62 @@ function getVisible() {
     }
     
     if (state.selectedCategory) {
-      return t.category === state.selectedCategory && matchesStatus && matchesQuery;
+      return (t.category || "").trim().toLocaleLowerCase("tr") === state.selectedCategory.trim().toLocaleLowerCase("tr") && matchesStatus && matchesQuery;
     }
     
     return matchesStatus && matchesQuery;
   });
+
+  if (!state.sort || state.sort === "manual") return filtered;
+  const [key, direction] = state.sort.split("-");
+  const mult = direction === "desc" ? -1 : 1;
+
+  return filtered.slice().sort((a, b) => {
+    let valA = a[key];
+    let valB = b[key];
+
+    if (key === "updatedAt" || key === "createdAt") {
+      const timeA = valA ? new Date(valA).getTime() : 0;
+      const timeB = valB ? new Date(valB).getTime() : 0;
+      return (timeA - timeB) * mult;
+    }
+
+    if (key === "status") {
+      const rankA = STATUS_ORDER[valA] ?? 99;
+      const rankB = STATUS_ORDER[valB] ?? 99;
+      return (rankA - rankB) * mult;
+    }
+
+    if (typeof valA === "string" || typeof valB === "string") {
+      return (valA || "").localeCompare(valB || "", "tr") * mult;
+    }
+
+    if (valA < valB) return -1 * mult;
+    if (valA > valB) return 1 * mult;
+    return 0;
+  });
+}
+
+function updateSortHeaders() {
+  const [currentKey, direction] = (state.sort || "").split("-");
+  $$("th[data-sort]").forEach(th => {
+    const key = th.dataset.sort;
+    const icon = th.querySelector(".sort-icon");
+    if (key === currentKey && state.sort !== "manual") {
+      th.classList.add("active-sort");
+      if (icon) icon.textContent = direction === "asc" ? "▲" : "▼";
+    } else {
+      th.classList.remove("active-sort");
+      if (icon) icon.textContent = "↕";
+    }
+  });
 }
 
 function toggleSort(key) {
-  const [current, direction] = state.sort.split("-");
+  const [current, direction] = (state.sort || "").split("-");
   state.sort = `${key}-${current === key && direction === "asc" ? "desc" : "asc"}`;
-  $("#sort-select").value = state.sort;
+  const sortSel = $("#sort-select");
+  if (sortSel) sortSel.value = state.sort;
   renderTable();
   savePreferences();
 }
@@ -1054,7 +1099,9 @@ function toggleSort(key) {
 function renderTable() {
   const isTodayTab = state.activeTab === "today";
   const todayTopicsTotal = state.topics.filter(t => t.today).length;
-  const currentCategoryTotal = state.selectedCategory ? state.topics.filter(t => t.category === state.selectedCategory).length : state.topics.length;
+  const currentCategoryTotal = state.selectedCategory
+    ? state.topics.filter(t => (t.category || "").trim().toLocaleLowerCase("tr") === state.selectedCategory.trim().toLocaleLowerCase("tr")).length
+    : state.topics.length;
   const visible = getVisible();
   const totalPages = Math.max(1, Math.ceil(visible.length / state.pageSize));
   state.page = Math.min(state.page, totalPages);
@@ -1073,6 +1120,7 @@ function renderTable() {
   $("#table-view").classList.toggle("hidden", isGlobalEmpty || isTodayEmpty || isNoResults);
   $("#topic-table-body").replaceChildren(...pageTopics.map((topic, index) => createRow(topic, start + index)));
   renderPagination(visible.length, totalPages);
+  updateSortHeaders();
 }
 
 function statusButtons(topic) {
@@ -1179,7 +1227,11 @@ async function moveTopic(sourceId, targetId) {
   const [moved] = state.topics.splice(sourceIndex, 1);
   const adjustedTarget = state.topics.findIndex(t => t.id === targetId);
   state.topics.splice(adjustedTarget, 0, moved);
+  state.sort = "manual";
+  const sortSel = $("#sort-select");
+  if (sortSel) sortSel.value = "manual";
   await save();
+  await savePreferences();
   renderTable();
 }
 
@@ -1569,11 +1621,17 @@ async function syncFromNotionInternal({ silent = false, fastOnly = false } = {})
         // 3. Notion'da yeni açılan konuları ekle
         if (changes.newTopics && changes.newTopics.length > 0) {
           for (const newTopic of changes.newTopics) {
-            state.topics.push(newTopic);
-            if (newTopic.category && !state.categories.includes(newTopic.category)) {
-              state.categories.push(newTopic.category);
+            const exists = state.topics.some(t =>
+              (t.id && t.id === newTopic.id) ||
+              (t.notionPageId && NotionAPI.cleanDatabaseId(t.notionPageId) === NotionAPI.cleanDatabaseId(newTopic.notionPageId))
+            );
+            if (!exists) {
+              state.topics.push(newTopic);
+              if (newTopic.category && !state.categories.includes(newTopic.category)) {
+                state.categories.push(newTopic.category);
+              }
+              hasChanges = true;
             }
-            hasChanges = true;
           }
         }
 
