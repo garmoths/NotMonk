@@ -69,7 +69,11 @@
           </select></label>
         </div>
         <div class="result-line">
-          <span><b id="result-count">0</b> konu gösteriliyor</span><button id="clear-filters">Filtreleri temizle</button>
+          <span><b id="result-count">0</b> konu gösteriliyor</span>
+          <div class="result-actions">
+            <button id="clear-filters">Filtreleri temizle</button>
+            <button id="add-topic-btn" class="primary area-add-topic-btn" type="button">＋ Konu Ekle</button>
+          </div>
         </div>
         <section id="empty-state" class="empty hidden">
           <span>＋</span>
@@ -124,9 +128,7 @@
       </header><input id="edit-id" type="hidden">
       <div class="editor-layout">
         <aside class="topic-sidebar">
-          <div class="field-number">
-            01
-          </div><label>KONU BAŞLIĞI<input id="title" required="" maxlength="120" placeholder="Örn. HTTP istek ve cevapları"></label>
+          <label>KONU BAŞLIĞI<input id="title" required="" maxlength="120" placeholder="Örn. HTTP istek ve cevapları"></label>
           <div class="category-field">
             <div class="field-label-row"><span>ALAN</span><button id="toggle-category-manager" type="button" aria-expanded="false"><i>＋</i><b>Alanları yönet</b></button></div>
             <select id="category"></select>
@@ -135,23 +137,17 @@
               <div class="add-category"><input id="new-category" maxlength="30" placeholder="Yeni bir alan yaz…"><button id="add-category" type="button"><span>＋</span> Ekle</button></div>
               <div id="category-list" class="category-list"></div>
             </section>
-          </div><label>KAYNAK BAĞLANTISI<input id="resource" type="url" placeholder="https://..."></label>
+          </div>
+          <label>KAYNAK BAĞLANTISI<input id="resource" type="url" placeholder="https://..."></label>
           <section class="editor-status">
             <span>DURUM</span>
             <div id="editor-status-buttons" class="status-buttons"></div>
           </section>
-          <div class="sidebar-tip">
-            <b>İPUCU</b>
-            <p>Tanım kopyalamak yerine konuyu kendi cümlelerinle anlat. Örnekler ve anlamadığın noktalar ekle.</p>
-          </div>
         </aside>
         <section class="notes-editor">
           <div class="notes-toolbar">
             <span class="notes-label">NOT DEFTERİ</span>
-            <div class="notes-toolbar-meta">
-              <span class="notes-selection-hint">Metni veya satırı seçince biçimlendirme paneli açılır</span>
-              <span><b id="note-count">0</b> karakter</span>
-            </div>
+            <span><b id="note-count">0</b> karakter</span>
           </div>
           <div class="editor-content-wrapper">
             <!-- Notion-style Floating Selection Toolbar -->

@@ -1,21 +1,21 @@
 /* ── Topic Dialog (Workspace Modal) ───────────────────────────────────────── */
 .topic-page {
-  width: min(1200px, calc(100% - 32px));
-  height: min(820px, calc(100vh - 40px));
+  width: min(1320px, calc(100% - 32px));
+  height: min(860px, calc(100vh - 36px));
   max-width: none;
   max-height: none;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line2);
   padding: 0;
   color: var(--text);
-  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.85);
 }
 
 .topic-page::backdrop {
   background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(6px);
 }
 
 .topic-page form {
@@ -30,15 +30,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px;
+  padding: 18px 28px;
   border-bottom: 1px solid var(--line);
   background: #090d13;
 }
 
 .editor-header h2 {
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
   margin: 0;
+  font-weight: 700;
 }
 
 .editor-header .eyebrow {
@@ -69,53 +70,43 @@
 /* ── Editor Layout (Sidebar + Notes) ─────────────────────────────────────── */
 .editor-layout {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 420px 1fr;
   min-height: 0;
 }
 
 .topic-sidebar {
   border-right: 1px solid var(--line);
-  padding: 24px;
-  background: #0a0e14;
+  padding: 32px 28px;
+  background: #090d13;
   overflow-y: auto;
-}
-
-.field-number {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(0, 237, 159, 0.3);
-  color: var(--accent);
-  font: 700 12px monospace;
-  margin-bottom: 20px;
-  border-radius: 6px;
 }
 
 .topic-sidebar label {
   display: block;
-  margin-bottom: 18px;
-  color: #aeb5bd;
-  font: 700 10px monospace;
-  letter-spacing: 0.05em;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font: 700 11px monospace;
+  letter-spacing: 0.08em;
 }
 
 .topic-sidebar input,
 .topic-sidebar select {
   width: 100%;
-  padding: 10px 12px;
-  margin-top: 6px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: #0e131b;
+  padding: 12px 14px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line2);
+  background: var(--panel2);
   color: var(--text);
-  font: 13px system-ui, sans-serif;
+  font: 500 14px Inter, system-ui, sans-serif;
   outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .topic-sidebar input:focus,
 .topic-sidebar select:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(108, 142, 240, 0.15);
 }
 
 /* ── Category Field & Manager Drawer ─────────────────────────────────────── */
@@ -290,46 +281,30 @@
 
 /* ── Status Selection in Modal ────────────────────────────────────────────── */
 .editor-status {
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .editor-status > span {
   display: block;
-  color: #aeb5bd;
-  font: 700 10px monospace;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
+  color: var(--muted);
+  font: 700 11px monospace;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
 }
 
 .editor-status .status-buttons {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 
 .editor-status .status-button {
   justify-content: center;
   width: 100%;
-  padding: 8px 6px;
-}
-
-.sidebar-tip {
-  margin-top: 24px;
-  border-top: 1px solid var(--line);
-  padding-top: 16px;
-  color: #66717e;
+  padding: 10px 8px;
   font-size: 12px;
-  line-height: 1.5;
-}
-
-.sidebar-tip b {
-  color: var(--accent);
-  font: 700 9px monospace;
-  letter-spacing: 0.12em;
-}
-
-.sidebar-tip p {
-  margin: 6px 0 0;
+  font-weight: 600;
+  border-radius: 8px;
 }
 
 /* ── Notes Editor (Right Area) ───────────────────────────────────────────── */
