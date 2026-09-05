@@ -5,23 +5,22 @@
   align-items: center;
   gap: 8px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--muted);
-  padding: 0 12px;
+  border-radius: 7px;
+  background: #0d1218;
+  color: #aeb6bf;
+  padding: 0 13px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .theme-toggle:hover {
-  border-color: var(--line2);
-  color: var(--text);
+  border-color: #4a5562;
+  color: #fff;
 }
 
 .theme-icon {
   font-size: 14px;
   color: #ff5da9;
-  filter: drop-shadow(0 0 6px rgba(255, 93, 169, 0.4));
 }
 
 .theme-copy {
@@ -32,71 +31,66 @@
 }
 
 .theme-copy small {
-  font-size: 8px;
+  font-size: 9px;
   letter-spacing: 0.08em;
   opacity: 0.7;
   font-family: monospace;
 }
 
 .theme-copy b {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* ── Confirmation Modal ──────────────────────────────────────────────────── */
 .confirm-dialog {
-  width: min(420px, calc(100% - 32px));
+  width: min(430px, calc(100% - 28px));
   background: #0d1218;
   color: var(--text);
-  border: 1px solid var(--line2);
+  border: 1px solid var(--line2, #303946);
   border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+  padding: 28px;
+  box-shadow: 0 30px 120px #000;
 }
 
 .confirm-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(5px);
 }
 
 .confirm-icon {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255, 101, 114, 0.15);
+  background: #2b171c;
   color: #ff7180;
-  font-weight: 800;
-  font-size: 16px;
-  margin-bottom: 16px;
+  font-weight: 900;
+  margin-bottom: 20px;
 }
 
 .confirm-dialog h2 {
-  font-size: 20px;
+  font-size: 24px;
   margin: 0 0 8px;
 }
 
 .confirm-dialog p {
   color: var(--muted);
-  font-size: 13px;
-  margin: 0 0 22px;
-  line-height: 1.5;
+  margin: 0 0 26px;
 }
 
 .confirm-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 9px;
 }
 
 .confirm-actions button {
   border: 0;
   border-radius: 6px;
-  padding: 10px 14px;
-  font-weight: 600;
+  padding: 12px 15px;
+  font-weight: 750;
   cursor: pointer;
-  font-size: 13px;
-  transition: all 0.12s;
 }
 
 .confirm-danger {
@@ -104,175 +98,330 @@
   color: #fff;
 }
 
-.confirm-danger:hover {
-  background: #f85a6a;
-}
-
 .confirm-primary {
   background: var(--accent);
-  color: #04110c;
+  color: #17030d;
 }
 
-/* ── Pink Theme ──────────────────────────────────────────────────────────── */
+/* ── Original Pastel Pink Theme ──────────────────────────────────────────── */
 body[data-theme="pink"] {
-  --bg: #130811;
-  --panel: #1c0d19;
-  --panel2: #251020;
-  --line: #482039;
-  --line2: #65304f;
-  --text: #fff2f8;
-  --muted: #bd8fa8;
-  --accent: #ff4fa3;
-  --accent-soft: rgba(255, 79, 163, 0.12);
-  --danger: #ff6b91;
-  --danger-soft: rgba(255, 107, 145, 0.12);
-  background: radial-gradient(circle at 85% 0, rgba(255, 54, 151, 0.15), transparent 35%), linear-gradient(180deg, #160a13, #0e070c);
+  color-scheme: light;
+  --bg: #ffd6e7;
+  --panel: #ffe8f1;
+  --panel2: #ffc7dd;
+  --line: #eba9c3;
+  --line2: #d989aa;
+  --text: #46152d;
+  --muted: #8d526c;
+  --accent: #d92f78;
+  --danger: #bd285d;
+  background: linear-gradient(145deg, #ffd2e4 0%, #ffe8f1 48%, #f8bdd5 100%);
+  color: var(--text);
 }
 
 body[data-theme="pink"] .nav-shell {
-  background: rgba(21, 8, 18, 0.94);
-  border-color: #3d1931;
+  background: #f6b9d2;
+  border-color: #d98fac;
 }
 
-body[data-theme="pink"] .brand-mark {
-  border-color: #ffb8da;
-  box-shadow: inset 0 0 0 5px #130811, inset 0 0 0 7px #ff5da9;
-  color: #ffb8da;
+body[data-theme="pink"] .brand,
+body[data-theme="pink"] .nav-stats span {
+  color: #5e203d;
+}
+
+body[data-theme="pink"] .nav-stats b {
+  color: #a51654;
 }
 
 body[data-theme="pink"] .primary {
-  background: linear-gradient(135deg, #ff3c96, #ff75bd);
-  color: #260315;
-  box-shadow: 0 4px 18px rgba(255, 61, 151, 0.25);
+  background: #c9286e;
+  color: #fff4f8;
+  box-shadow: none;
+}
+
+body[data-theme="pink"] .primary:hover {
+  background: #b51f60;
 }
 
 body[data-theme="pink"] .theme-toggle {
-  background: #2a1020;
-  border-color: #632549;
-  color: #ffd1e7;
+  background: #ffe4ef;
+  border-color: #c87096;
+  color: #6c2445;
 }
 
-body[data-theme="pink"] .control-bar,
-body[data-theme="pink"] .table-shell,
-body[data-theme="pink"] .compact-progress {
-  border-color: #51203f;
-  background: rgba(26, 10, 22, 0.7);
+body[data-theme="pink"] .theme-toggle span {
+  color: #b91f62;
+  text-shadow: none;
+}
+
+body[data-theme="pink"] .section-code,
+body[data-theme="pink"] .eyebrow,
+body[data-theme="pink"] #clear-filters,
+body[data-theme="pink"] .field-label-row button {
+  color: #b51f60;
+}
+
+body[data-theme="pink"] .result-line {
+  color: #855069;
+}
+
+body[data-theme="pink"] .control-bar {
+  background: #f1b7cf;
+  border-color: #d995b2;
+}
+
+body[data-theme="pink"] .table-shell {
+  background: #ffeaf2;
+  border-color: #d995b2;
 }
 
 body[data-theme="pink"] .control-select,
 body[data-theme="pink"] .search-wrap {
-  border-color: #51203f;
+  border-color: #d995b2;
+}
+
+body[data-theme="pink"] .control-select span {
+  color: #a91b58;
 }
 
 body[data-theme="pink"] input,
 body[data-theme="pink"] textarea,
 body[data-theme="pink"] select {
-  background: #180b15;
-  border-color: #53223f;
+  background: #f7bfd5;
+  border-color: #c86f94;
+  color: #4a1730;
+  box-shadow: none;
+}
+
+body[data-theme="pink"] input:hover,
+body[data-theme="pink"] select:hover {
+  background: #f3b3cd;
+  border-color: #b94e7c;
+}
+
+body[data-theme="pink"] input:focus,
+body[data-theme="pink"] select:focus,
+body[data-theme="pink"] textarea:focus {
+  background: #fac9dc;
+  border-color: #a9245d;
+}
+
+body[data-theme="pink"] input::placeholder,
+body[data-theme="pink"] textarea::placeholder {
+  color: #8d536c;
+}
+
+body[data-theme="pink"] .control-bar input,
+body[data-theme="pink"] .control-bar select {
+  background: transparent;
+  border: 0;
 }
 
 body[data-theme="pink"] th {
-  background: #1a0a16;
-  border-color: #51203f;
-}
-
-body[data-theme="pink"] tbody tr:hover {
-  background: #28101f;
+  background: #efb6ce;
+  border-color: #d18aa8;
+  color: #6a2d49;
 }
 
 body[data-theme="pink"] td {
-  border-color: #35152b;
+  border-color: #e3a8c0;
+  color: #6d3650;
 }
 
-body[data-theme="pink"] .category-pill {
-  color: #ff8ec5;
-  border-color: #7d2f5b;
-  background: #291020;
+body[data-theme="pink"] tbody tr {
+  background: #ffeaf2;
+}
+
+body[data-theme="pink"] tbody tr:nth-child(even) {
+  background: #ffdeeb;
+}
+
+body[data-theme="pink"] tbody tr:hover {
+  background: #eaa5c2;
+}
+
+body[data-theme="pink"] .table-title {
+  color: #441329;
 }
 
 body[data-theme="pink"] .row-number {
-  color: #87516e;
+  color: #ad6080;
 }
 
-body[data-theme="pink"] .progress-track {
-  background: #3a1830;
+body[data-theme="pink"] .category-pill {
+  background: #f5b9d1;
+  border-color: #ce7398;
+  color: #711e46;
 }
 
-body[data-theme="pink"] .progress-track i {
-  background: linear-gradient(90deg, #ff368f, #ff83c5);
-  box-shadow: 0 0 15px rgba(255, 75, 163, 0.45);
+body[data-theme="pink"] .row-action {
+  color: #9f174f;
 }
 
-body[data-theme="pink"] .topic-page,
-body[data-theme="pink"] .confirm-dialog {
-  background: #170b14;
-  border-color: #663052;
+body[data-theme="pink"] .resource-icon-link {
+  background: rgba(217, 47, 120, 0.15);
+  color: #b51f60;
+}
+
+body[data-theme="pink"] .resource-icon-link:hover {
+  background: rgba(217, 47, 120, 0.3);
+}
+
+body[data-theme="pink"] .status-todo:not(.active) {
+  background: #efb8cc;
+  border-color: #c86179;
+  color: #9d243f;
+}
+
+body[data-theme="pink"] .status-learning:not(.active) {
+  background: #efd29f;
+  border-color: #b98927;
+  color: #73520e;
+}
+
+body[data-theme="pink"] .status-done:not(.active) {
+  background: #abd8bd;
+  border-color: #4b9c6e;
+  color: #1f6841;
+}
+
+body[data-theme="pink"] .status-todo.active {
+  background: #c83c5c;
+  border-color: #c83c5c;
+  color: #fff;
+}
+
+body[data-theme="pink"] .status-learning.active {
+  background: #d5a832;
+  border-color: #d5a832;
+  color: #3f2b03;
+}
+
+body[data-theme="pink"] .status-done.active {
+  background: #3b9d67;
+  border-color: #3b9d67;
+  color: #fff;
+}
+
+body[data-theme="pink"] .topic-page {
+  background: #efb4cc;
+  border-color: #ce7da0;
+  box-shadow: 0 28px 80px rgba(104, 25, 61, 0.25);
+}
+
+body[data-theme="pink"] .topic-page::backdrop {
+  background: rgba(111, 35, 69, 0.34);
 }
 
 body[data-theme="pink"] .editor-header,
 body[data-theme="pink"] .editor-footer {
-  background: #180a15;
-  border-color: #49203a;
+  background: #e7a4c0;
+  border-color: #d58fac;
+}
+
+body[data-theme="pink"] .editor-header-actions > span {
+  color: #805068;
 }
 
 body[data-theme="pink"] .topic-sidebar {
-  background: #140a12;
-  border-color: #49203a;
+  background: #efb4cc;
+  border-color: #d58fac;
+}
+
+body[data-theme="pink"] .field-number {
+  border-color: #b74e7c;
+  color: #7a2148;
+  background: #f5b5ce;
+}
+
+body[data-theme="pink"] .topic-sidebar label,
+body[data-theme="pink"] .editor-status > span,
+body[data-theme="pink"] .field-label-row {
+  color: #642a46;
 }
 
 body[data-theme="pink"] .notes-editor,
 body[data-theme="pink"] .notes-editor textarea {
-  background: #1a0c17;
+  background: #f9cfe0;
+  color: #4a1830;
 }
 
 body[data-theme="pink"] .notes-toolbar {
-  border-color: #49203a;
-}
-
-body[data-theme="pink"] .field-number {
-  border-color: #9c3e72;
-  color: #ff73b6;
-}
-
-body[data-theme="pink"] .sidebar-tip {
-  border-color: #49203a;
-}
-
-body[data-theme="pink"] .category-manager {
-  background: #10070e;
-  border-color: #54203f;
-}
-
-body[data-theme="pink"] .category-item {
-  background: #24101f;
+  background: #eaa9c4;
+  border-color: #d58fac;
+  color: #73435b;
 }
 
 body[data-theme="pink"] .green-dot {
-  background: #ff4fa3;
-  box-shadow: 0 0 10px #ff4fa3;
+  background: #b62563;
+  box-shadow: none;
 }
 
-body[data-theme="pink"] .cancel-button {
-  border-color: #69304f;
-  color: #d8a7c0;
+body[data-theme="pink"] .sidebar-tip {
+  border-color: #d493af;
+  color: #89566e;
+}
+
+body[data-theme="pink"] .sidebar-tip b {
+  color: #9f174f;
+}
+
+body[data-theme="pink"] .category-manager {
+  background: #dea0bb;
+  border-color: #cd7b9e;
+}
+
+body[data-theme="pink"] .category-item {
+  background: #efbdd1;
+  color: #642a46;
+}
+
+body[data-theme="pink"] .add-category button {
+  background: #b62563;
+  color: #fff;
+}
+
+body[data-theme="pink"] .cancel-button,
+body[data-theme="pink"] .secondary {
+  background: #f7d1e0;
+  border-color: #bc6b8e;
+  color: #662a47;
+}
+
+body[data-theme="pink"] .cancel-button:hover,
+body[data-theme="pink"] .secondary:hover {
+  background: #eeb6cc;
+  color: #4c1730;
+}
+
+body[data-theme="pink"] .confirm-dialog {
+  background: #efb5cd;
+  border-color: #c87599;
+  color: #48152e;
+  box-shadow: 0 25px 70px rgba(96, 25, 57, 0.28);
+}
+
+body[data-theme="pink"] .confirm-dialog::backdrop {
+  background: rgba(105, 32, 65, 0.3);
 }
 
 body[data-theme="pink"] .confirm-icon {
-  background: #3a1028;
-  color: #ff78ba;
+  background: #edafc8;
+  color: #841c4a;
 }
 
-/* Pink theme status buttons */
-body[data-theme="pink"] .status-todo {
-  --status-color: #ff6584;
+body[data-theme="pink"] .confirm-dialog p {
+  color: #805069;
 }
 
-body[data-theme="pink"] .status-learning {
-  --status-color: #ffba42;
+body[data-theme="pink"] .confirm-danger {
+  background: #b9255f;
+  color: #fff;
 }
 
-body[data-theme="pink"] .status-done {
-  --status-color: #38e1a6;
+body[data-theme="pink"] .empty {
+  border-color: #ce86a4;
+  background: #f8c7da;
 }
 
 @media (max-width: 650px) {

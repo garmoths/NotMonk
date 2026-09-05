@@ -255,15 +255,22 @@ function renderStats() {
   const total = state.topics.length;
   const active = state.topics.filter(t => t.status === "learning").length;
   const done = state.topics.filter(t => t.status === "done").length;
-  const p = total ? Math.round(done / total * 100) : 0;
   $("#nav-total").textContent = total;
   $("#nav-active").textContent = active;
   $("#nav-done").textContent = done;
-  $("#progress-value").textContent = `${p}%`;
-  $("#progress-bar").style.width = `${p}%`;
-  $("#done-count").textContent = `${done} öğrenildi`;
-  $("#remaining-count").textContent = `${total - done} kaldı`;
+  const progressVal = $("#progress-value");
+  if (progressVal) {
+    const p = total ? Math.round(done / total * 100) : 0;
+    progressVal.textContent = `${p}%`;
+    const progressBar = $("#progress-bar");
+    if (progressBar) progressBar.style.width = `${p}%`;
+    const doneCnt = $("#done-count");
+    if (doneCnt) doneCnt.textContent = `${done} öğrenildi`;
+    const remCnt = $("#remaining-count");
+    if (remCnt) remCnt.textContent = `${total - done} kaldı`;
+  }
 }
+
 
 function renderCategories() {
   const select = $("#category-select"), current = state.category;
