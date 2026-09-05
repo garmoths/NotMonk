@@ -624,23 +624,47 @@ function openNewCategoryDialog() {
   if (input) setTimeout(() => input.focus(), 100);
 }
 
+function showToast(msg, type = "info") {
+  let toast = $("#notmonk-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "notmonk-toast";
+    toast.className = "notmonk-toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.className = `notmonk-toast show ${type}`;
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.className = "notmonk-toast";
+  }, 4500);
+}
+
 async function ensureNotionArea(name, iconData = null) {
   if (!state.notionToken || !name) return null;
   if (state.areaMapping[name]?.id) return state.areaMapping[name];
 
   try {
-    let parentForArea = state.umbrellaPageId || state.notionDbId;
+    let parentForArea = state.umbrellaPageId;
     if (!parentForArea) {
-      parentForArea = await NotionAPI.getOrFindUmbrellaPageId(state.notionToken, state.notionDbId);
+      parentForArea = await NotionAPI.getOrFindUmbrellaPageId(state.notionToken);
       if (parentForArea) {
         state.umbrellaPageId = parentForArea;
         await save();
         await saveNotionStorage();
       }
     }
-    if (!parentForArea) return null;
+    if (!parentForArea && state.notionDbId) {
+      parentForArea = state.notionDbId;
+    }
+    if (!parentForArea) {
+      console.warn("[NotMonk] NotMonk çatı sayfası ID'si bulunamadı.");
+      showToast("Notion 'NotMonk' ana sayfası bulunamadı. Lütfen Notion bağlantını kontrol et.", "error");
+      return null;
+    }
 
     const icon = iconData?.icon || "📁";
+    showToast(`"${name}" alanı Notion'a aktarılıyor...`);
     const newArea = await NotionAPI.createAreaPage(state.notionToken, parentForArea, name, icon);
     if (newArea) {
       state.areaMapping[name] = { id: newArea.id, type: "page" };
@@ -648,10 +672,12 @@ async function ensureNotionArea(name, iconData = null) {
         await NotionAPI.updatePageIcon(state.notionToken, newArea.id, iconData);
       }
       await save();
+      showToast(`✓ "${name}" alanı Notion'da oluşturuldu!`, "success");
       return newArea;
     }
   } catch (err) {
-    console.warn("Notion alan sayfası oluşturulamadı:", err);
+    console.error("[NotMonk] Notion alan sayfası oluşturulamadı:", err);
+    showToast(`✕ Notion'a aktarılamadı: ${err.message || "Bilinmeyen hata"}`, "error");
   }
   return null;
 }
@@ -660,12 +686,15 @@ async function syncUnmappedCategoriesToNotion() {
   if (!state.notionToken) return;
   let umbrellaId = state.umbrellaPageId;
   if (!umbrellaId) {
-    umbrellaId = await NotionAPI.getOrFindUmbrellaPageId(state.notionToken, state.notionDbId);
+    umbrellaId = await NotionAPI.getOrFindUmbrellaPageId(state.notionToken);
     if (umbrellaId) {
       state.umbrellaPageId = umbrellaId;
       await save();
       await saveNotionStorage();
     }
+  }
+  if (!umbrellaId && state.notionDbId) {
+    umbrellaId = state.notionDbId;
   }
   if (!umbrellaId) return;
 
@@ -1410,6 +1439,7 @@ async function pullAllFromNotion() {
   progressText.textContent = "Notion Teamspace ve Konuları taranıyor...";
 
   try {
+    await syncUnmappedCategoriesToNotion();
     const { areas, topics, umbrellaId } = await NotionAPI.fetchAllWorkspaceData(
       state.notionToken,
       state.notionDbId,
