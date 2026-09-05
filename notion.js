@@ -20,30 +20,92 @@ const NotionAPI = {
     return cleaned.replace(/-/g, "");
   },
 
-  async testConnection(token, rawDatabaseId) {
-    const databaseId = this.cleanDatabaseId(rawDatabaseId);
-    if (!token) throw new Error("Notion API anahtarı (Token) eksik.");
-    if (!databaseId) throw new Error("Notion Veritabanı ID'si eksik.");
+  async resolveDatabaseId(token, rawId) {
+    let id = this.cleanDatabaseId(rawId);
+    if (!token || !id) return id;
 
-    const res = await fetch(`${NOTION_BASE_URL}/databases/${databaseId}`, {
+    // 1. First test if it's already a database
+    const dbRes = await fetch(`${NOTION_BASE_URL}/databases/${id}`, {
       method: "GET",
       headers: this.getHeaders(token)
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      if (res.status === 401) throw new Error("Geçersiz Notion API anahtarı (Unauthorized).");
-      if (res.status === 404) throw new Error("Veritabanı bulunamadı. Lütfen Database ID'sini ve entegrasyonun veritabanına eklendiğini (Connections -> NotMonk) kontrol et.");
-      throw new Error(err.message || `Notion API Hatası: ${res.status}`);
+    if (dbRes.ok) {
+      const data = await dbRes.json();
+      return {
+        databaseId: id,
+        databaseTitle: data.title?.[0]?.plain_text || data.title?.[0]?.text?.content || "NotMonk Veritabanı",
+        properties: data.properties || {}
+      };
     }
 
-    const data = await res.json();
-    const titleObj = data.title?.[0]?.plain_text || data.title?.[0]?.text?.content || "İsimsiz Veritabanı";
+    // 2. If it's not a database, check if it's a page
+    const pageRes = await fetch(`${NOTION_BASE_URL}/pages/${id}`, {
+      method: "GET",
+      headers: this.getHeaders(token)
+    });
+
+    if (pageRes.ok) {
+      // Look for an existing child database inside this page
+      const blocksRes = await fetch(`${NOTION_BASE_URL}/blocks/${id}/children?page_size=50`, {
+        method: "GET",
+        headers: this.getHeaders(token)
+      });
+
+      if (blocksRes.ok) {
+        const blocksData = await blocksRes.json();
+        const childDb = blocksData.results?.find(b => b.type === "child_database");
+        if (childDb) {
+          return await this.resolveDatabaseId(token, childDb.id);
+        }
+      }
+
+      // No child database found on this page -> automatically create one!
+      const createDbRes = await fetch(`${NOTION_BASE_URL}/databases`, {
+        method: "POST",
+        headers: this.getHeaders(token),
+        body: JSON.stringify({
+          parent: { type: "page_id", page_id: id },
+          title: [{ type: "text", text: { content: "NotMonk Konular & Notlar" } }],
+          properties: {
+            "Name": { title: {} },
+            "Kategori": { select: {} },
+            "Durum": { select: {} },
+            "Bugün": { checkbox: {} },
+            "Kaynak": { url: {} }
+          }
+        })
+      });
+
+      if (createDbRes.ok) {
+        const newDb = await createDbRes.json();
+        return {
+          databaseId: newDb.id.replace(/-/g, ""),
+          databaseTitle: "NotMonk Konular & Notlar (Otomatik Oluşturuldu)",
+          properties: newDb.properties || {}
+        };
+      } else {
+        const err = await createDbRes.json().catch(() => ({}));
+        throw new Error(`Sayfa içinde veritabanı oluşturulamadı: ${err.message || createDbRes.status}`);
+      }
+    }
+
+    const err = await dbRes.json().catch(() => ({}));
+    if (dbRes.status === 401 || pageRes.status === 401) throw new Error("Geçersiz Notion API anahtarı (Unauthorized).");
+    if (dbRes.status === 404 && pageRes.status === 404) throw new Error("Veritabanı veya Sayfa bulunamadı. Lütfen bağlantının (Connections -> NotMonk) eklendiğinden emin ol.");
+    throw new Error(err.message || `Notion API Hatası: ${dbRes.status}`);
+  },
+
+  async testConnection(token, rawDatabaseId) {
+    if (!token) throw new Error("Notion API anahtarı (Token) eksik.");
+    if (!rawDatabaseId) throw new Error("Notion Veritabanı ID'si eksik.");
+
+    const res = await this.resolveDatabaseId(token, rawDatabaseId);
     return {
       success: true,
-      databaseId,
-      databaseTitle: titleObj,
-      properties: data.properties || {}
+      databaseId: res.databaseId,
+      databaseTitle: res.databaseTitle,
+      properties: res.properties || {}
     };
   },
 
