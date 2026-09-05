@@ -1,7 +1,7 @@
 const STATUS = { todo: "Başlamadım", learning: "Öğreniyorum", done: "Öğrendim" };
 const STATUS_ORDER = { todo: 0, learning: 1, done: 2 };
 
-const ROADMAP_VERSION = 1;
+const ROADMAP_VERSION = 2;
 const starterTopics = NOTMONK_ROADMAP.map((topic, index) => ({ ...topic, id: crypto.randomUUID(), status: "todo", updatedAt: Date.now() - index * 1000 }));
 const DEFAULT_CATEGORIES = [...NOTMONK_CATEGORIES];
 
@@ -9,12 +9,15 @@ const state = {
   topics: [], categories: [],
   category: "Tümü", status: "all", query: "", sort: "updatedAt-desc",
   theme: "dark", page: 1, pageSize: 10, draggedId: null,
-  activeTab: "all"
+  activeTab: "all",
+  notionToken: "", notionDbId: "", notionAutoSync: false,
+  notionConnected: false, notionDbTitle: ""
 };
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const dialog = $("#topic-dialog");
+const notionDialog = $("#notion-dialog");
 let isEditorDirty = false;
 
 // ── Storage ──────────────────────────────────────────────────────────────────
@@ -31,23 +34,33 @@ const storageSet = value => new Promise(resolve => {
 });
 const save = () => storageSet({ topics: state.topics, categories: state.categories });
 const savePreferences = () => storageSet({ preferences: { category: state.category, status: state.status, sort: state.sort, theme: state.theme, roadmapVersion: ROADMAP_VERSION } });
+const saveNotionStorage = () => storageSet({ notionConfig: { token: state.notionToken, dbId: state.notionDbId, autoSync: state.notionAutoSync } });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  const saved = await storageGet(["topics", "preferences", "categories"]);
+  const saved = await storageGet(["topics", "preferences", "categories", "notionConfig"]);
   const installRoadmap = saved.preferences?.roadmapVersion !== ROADMAP_VERSION;
   state.topics = (installRoadmap ? starterTopics : (Array.isArray(saved.topics) ? saved.topics : starterTopics))
     .map(t => ({ ...t, status: ["practiced", "mastered"].includes(t.status) ? "done" : t.status }));
   state.categories = installRoadmap ? [...DEFAULT_CATEGORIES] : (Array.isArray(saved.categories) ? saved.categories : [...DEFAULT_CATEGORIES]);
   state.topics.forEach(t => { if (!state.categories.includes(t.category)) state.categories.push(t.category); });
   Object.assign(state, saved.preferences || {});
+  
+  if (saved.notionConfig) {
+    state.notionToken = saved.notionConfig.token || "";
+    state.notionDbId = saved.notionConfig.dbId || "";
+    state.notionAutoSync = Boolean(saved.notionConfig.autoSync);
+  }
+
   if (installRoadmap || !saved.topics || !saved.categories) { await save(); await savePreferences(); }
   bindEvents();
   bindCategoryEvents();
+  bindNotionEvents();
   bindEnhancements();
   bindListEnhancements();
   applyTheme();
   render();
+  checkNotionStatusBackground();
 }
 
 // ── Events ───────────────────────────────────────────────────────────────────
@@ -64,7 +77,7 @@ function bindEvents() {
   ["#title", "#category", "#resource"].forEach(s => $(s).addEventListener("input", markDirty));
   $$('[data-sort]').forEach(b => b.onclick = () => toggleSort(b.dataset.sort));
   document.addEventListener("keydown", e => {
-    if (e.key.toLowerCase() === "n" && !dialog.open && !/input|textarea|select/i.test(e.target.tagName)) {
+    if (e.key.toLowerCase() === "n" && !dialog.open && !notionDialog?.open && !/input|textarea|select/i.test(e.target.tagName)) {
       e.preventDefault(); openForm();
     }
   });
@@ -79,7 +92,6 @@ function switchTab(tab) {
   state.page = 1;
   renderTable();
 }
-
 
 function bindListEnhancements() {
   const reset = () => { state.page = 1; renderTable(); };
@@ -115,7 +127,6 @@ function bindEnhancements() {
   }
 }
 
-
 // ── Editor ───────────────────────────────────────────────────────────────────
 function openForm(topic = null) {
   $("#topic-form").reset();
@@ -125,12 +136,26 @@ function openForm(topic = null) {
   $("#category-manager").classList.remove("hidden", "open");
   $("#toggle-category-manager").setAttribute("aria-expanded", "false");
   renderEditorCategories(topic?.category);
-  if (topic) { $("#title").value = topic.title; $("#notes").value = topic.notes || ""; $("#resource").value = topic.resource || ""; }
+  if (topic) {
+    $("#title").value = topic.title;
+    $("#notes").value = topic.notes || "";
+    $("#resource").value = topic.resource || "";
+  }
+  
+  const notionLinkEl = $("#editor-notion-link");
+  if (notionLinkEl) {
+    if (topic?.notionUrl) {
+      notionLinkEl.href = topic.notionUrl;
+      notionLinkEl.classList.remove("hidden");
+    } else {
+      notionLinkEl.classList.add("hidden");
+    }
+  }
+
   dialog.dataset.status = topic?.status || "todo";
   renderEditorStatus();
   $("#notes").placeholder = "Notlarını buraya yaz…\n\n• Konuyu kendi cümlelerinle açıkla.\n• Önemli noktaları ve örnekleri ekle.\n• Anlamadığın yerleri not al.\n• Bir sonraki adımını belirle.";
   $("#note-count").textContent = $("#notes").value.length;
-  $("#save-hint").textContent = topic ? "Düzenlemeye hazır" : "";
   isEditorDirty = false;
   dialog.showModal();
   $("#title").focus();
@@ -154,6 +179,7 @@ function renderEditorStatus() {
 async function saveForm(e) {
   e.preventDefault();
   const id = $("#edit-id").value;
+  const existing = id ? state.topics.find(t => t.id === id) : null;
   const topic = {
     id: id || crypto.randomUUID(),
     title: $("#title").value.trim(),
@@ -161,6 +187,9 @@ async function saveForm(e) {
     status: dialog.dataset.status || "todo",
     notes: $("#notes").value.trim(),
     resource: $("#resource").value.trim(),
+    today: existing ? existing.today : false,
+    notionPageId: existing?.notionPageId || null,
+    notionUrl: existing?.notionUrl || null,
     updatedAt: Date.now()
   };
   state.topics = id ? state.topics.map(t => t.id === id ? topic : t) : [topic, ...state.topics];
@@ -169,6 +198,10 @@ async function saveForm(e) {
   $("#save-hint").textContent = "Kaydedildi";
   dialog.close();
   render();
+
+  if (state.notionAutoSync && state.notionToken && state.notionDbId) {
+    syncTopicToNotion(topic);
+  }
 }
 
 async function deleteCurrent() {
@@ -282,6 +315,9 @@ async function toggleToday(topic) {
   topic.today = !topic.today;
   await save();
   render();
+  if (state.notionAutoSync && state.notionToken && state.notionDbId) {
+    syncTopicToNotion(topic);
+  }
 }
 
 function renderCategories() {
@@ -354,7 +390,11 @@ function statusButtons(topic) {
 
 async function updateStatus(topic, status) {
   topic.status = status;
-  await save(); render();
+  await save();
+  render();
+  if (state.notionAutoSync && state.notionToken && state.notionDbId) {
+    syncTopicToNotion(topic);
+  }
 }
 
 function createRow(topic, index) {
@@ -393,6 +433,19 @@ function createRow(topic, index) {
     link.onclick = e => e.stopPropagation();
     titleWrap.append(link);
   }
+
+  if (topic.notionUrl) {
+    const notionLink = document.createElement("a");
+    notionLink.href = topic.notionUrl;
+    notionLink.target = "_blank";
+    notionLink.rel = "noopener noreferrer";
+    notionLink.className = "notion-row-link";
+    notionLink.title = "Notion sayfasını aç";
+    notionLink.textContent = "N";
+    notionLink.onclick = e => e.stopPropagation();
+    titleWrap.append(notionLink);
+  }
+
   tr.children[2].replaceChildren(titleWrap);
 
   tr.querySelector(".category-pill").textContent = topic.category;
@@ -479,6 +532,225 @@ function askConfirmation({ title, message, accept, danger }) {
     modal.oncancel = e => { e.preventDefault(); finish(false); };
     modal.showModal();
   });
+}
+
+// ── Notion Integration ────────────────────────────────────────────────────────
+function bindNotionEvents() {
+  const toggleBtn = $("#notion-toggle-btn");
+  if (toggleBtn) toggleBtn.onclick = openNotionDialog;
+  const closeBtn = $("#close-notion-dialog");
+  if (closeBtn) closeBtn.onclick = () => notionDialog?.close();
+  const testBtn = $("#notion-test-btn");
+  if (testBtn) testBtn.onclick = testNotionConnection;
+  const saveBtn = $("#save-notion-config");
+  if (saveBtn) saveBtn.onclick = saveNotionConfig;
+  const pushBtn = $("#notion-push-all-btn");
+  if (pushBtn) pushBtn.onclick = pushAllToNotion;
+  const pullBtn = $("#notion-pull-all-btn");
+  if (pullBtn) pullBtn.onclick = pullAllFromNotion;
+}
+
+function openNotionDialog() {
+  $("#notion-token").value = state.notionToken || "";
+  $("#notion-db-id").value = state.notionDbId || "";
+  $("#notion-auto-sync").checked = Boolean(state.notionAutoSync);
+  const msgEl = $("#notion-status-msg");
+  if (msgEl) {
+    msgEl.textContent = state.notionConnected ? `✓ Bağlı: ${state.notionDbTitle || "Veritabanı"}` : "";
+    msgEl.className = `notion-status-msg ${state.notionConnected ? "success" : ""}`;
+  }
+  $("#notion-sync-progress").classList.add("hidden");
+  notionDialog.showModal();
+}
+
+async function testNotionConnection() {
+  const token = $("#notion-token").value.trim();
+  const dbId = $("#notion-db-id").value.trim();
+  const msgEl = $("#notion-status-msg");
+  const testBtn = $("#notion-test-btn");
+
+  if (!token || !dbId) {
+    msgEl.textContent = "Token ve Database ID gereklidir.";
+    msgEl.className = "notion-status-msg error";
+    return;
+  }
+
+  testBtn.disabled = true;
+  msgEl.textContent = "Bağlantı test ediliyor...";
+  msgEl.className = "notion-status-msg";
+
+  try {
+    const res = await NotionAPI.testConnection(token, dbId);
+    state.notionConnected = true;
+    state.notionDbTitle = res.databaseTitle;
+    msgEl.textContent = `✓ Başarılı: "${res.databaseTitle}" bulundu.`;
+    msgEl.className = "notion-status-msg success";
+    updateNotionStatusUI();
+  } catch (err) {
+    state.notionConnected = false;
+    msgEl.textContent = `✕ Hata: ${err.message}`;
+    msgEl.className = "notion-status-msg error";
+    updateNotionStatusUI();
+  } finally {
+    testBtn.disabled = false;
+  }
+}
+
+async function saveNotionConfig() {
+  state.notionToken = $("#notion-token").value.trim();
+  state.notionDbId = $("#notion-db-id").value.trim();
+  state.notionAutoSync = $("#notion-auto-sync").checked;
+  await saveNotionStorage();
+  
+  if (state.notionToken && state.notionDbId) {
+    checkNotionStatusBackground();
+  } else {
+    state.notionConnected = false;
+    updateNotionStatusUI();
+  }
+  
+  notionDialog.close();
+}
+
+async function checkNotionStatusBackground() {
+  if (!state.notionToken || !state.notionDbId) {
+    state.notionConnected = false;
+    updateNotionStatusUI();
+    return;
+  }
+  try {
+    const res = await NotionAPI.testConnection(state.notionToken, state.notionDbId);
+    state.notionConnected = true;
+    state.notionDbTitle = res.databaseTitle;
+  } catch (e) {
+    state.notionConnected = false;
+  }
+  updateNotionStatusUI();
+}
+
+function updateNotionStatusUI() {
+  const dot = $("#notion-status-dot");
+  if (!dot) return;
+  dot.classList.toggle("connected", Boolean(state.notionConnected));
+  dot.title = state.notionConnected
+    ? `Notion Bağlı: ${state.notionDbTitle || "Veritabanı"}`
+    : "Notion Bağlantısı Yapılandırılmadı / Hata";
+}
+
+async function syncTopicToNotion(topic) {
+  if (!state.notionToken || !state.notionDbId) return;
+  try {
+    const res = await NotionAPI.syncTopic(state.notionToken, state.notionDbId, topic);
+    if (res) {
+      topic.notionPageId = res.notionPageId;
+      topic.notionUrl = res.notionUrl;
+      await save();
+    }
+  } catch (e) {
+    console.warn(`Notion senkronizasyon hatası (${topic.title}):`, e);
+  }
+}
+
+async function pushAllToNotion() {
+  if (!state.notionToken || !state.notionDbId) {
+    alert("Önce Notion API Token ve Database ID bilgilerini kaydedip test etmelisin.");
+    return;
+  }
+
+  const pushBtn = $("#notion-push-all-btn");
+  const progressWrap = $("#notion-sync-progress");
+  const progressBar = $("#notion-sync-bar");
+  const progressText = $("#notion-sync-text");
+
+  pushBtn.disabled = true;
+  progressWrap.classList.remove("hidden");
+  progressBar.style.width = "0%";
+
+  const total = state.topics.length;
+  let completed = 0;
+  let errors = 0;
+
+  for (const topic of state.topics) {
+    progressText.textContent = `Aktarılıyor (${completed + 1}/${total}): ${topic.title}...`;
+    try {
+      const res = await NotionAPI.syncTopic(state.notionToken, state.notionDbId, topic);
+      if (res) {
+        topic.notionPageId = res.notionPageId;
+        topic.notionUrl = res.notionUrl;
+      }
+    } catch (e) {
+      errors++;
+      console.error("Toplu aktarım hatası:", topic.title, e);
+    }
+    completed++;
+    const percent = Math.round((completed / total) * 100);
+    progressBar.style.width = `${percent}%`;
+    await new Promise(r => setTimeout(r, 350));
+  }
+
+  await save();
+  renderTable();
+  pushBtn.disabled = false;
+  progressText.textContent = `✓ Tamamlandı! ${total - errors}/${total} konu Notion'a aktarıldı.`;
+  setTimeout(() => progressWrap.classList.add("hidden"), 4000);
+}
+
+async function pullAllFromNotion() {
+  if (!state.notionToken || !state.notionDbId) {
+    alert("Önce Notion API Token ve Database ID bilgilerini kaydedip test etmelisin.");
+    return;
+  }
+
+  const pullBtn = $("#notion-pull-all-btn");
+  const progressWrap = $("#notion-sync-progress");
+  const progressText = $("#notion-sync-text");
+  const progressBar = $("#notion-sync-bar");
+
+  pullBtn.disabled = true;
+  progressWrap.classList.remove("hidden");
+  progressBar.style.width = "50%";
+  progressText.textContent = "Notion'dan veriler çekiliyor...";
+
+  try {
+    const remoteTopics = await NotionAPI.queryDatabase(state.notionToken, state.notionDbId);
+    if (!remoteTopics || remoteTopics.length === 0) {
+      progressText.textContent = "Notion veritabanında hiç konu bulunamadı.";
+      pullBtn.disabled = false;
+      return;
+    }
+
+    let addedCount = 0;
+    let updatedCount = 0;
+
+    remoteTopics.forEach(remote => {
+      const existing = state.topics.find(t => t.notionPageId === remote.notionPageId || t.title.toLowerCase() === remote.title.toLowerCase());
+      if (existing) {
+        existing.notionPageId = remote.notionPageId;
+        existing.notionUrl = remote.notionUrl;
+        existing.status = remote.status;
+        existing.category = remote.category;
+        existing.today = remote.today;
+        if (remote.resource) existing.resource = remote.resource;
+        updatedCount++;
+      } else {
+        state.topics.push(remote);
+        if (!state.categories.includes(remote.category)) {
+          state.categories.push(remote.category);
+        }
+        addedCount++;
+      }
+    });
+
+    await save();
+    render();
+    progressBar.style.width = "100%";
+    progressText.textContent = `✓ Başarılı: ${addedCount} yeni konu eklendi, ${updatedCount} konu güncellendi.`;
+    setTimeout(() => progressWrap.classList.add("hidden"), 4000);
+  } catch (err) {
+    progressText.textContent = `✕ Hata: ${err.message}`;
+  } finally {
+    pullBtn.disabled = false;
+  }
 }
 
 init();

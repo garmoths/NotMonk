@@ -458,6 +458,61 @@ body[data-theme="pink"] .star-btn.active {
 }
 
 
+body[data-theme="pink"] .notion-toggle-btn {
+  background: #f8c7da;
+  border-color: #d995b2;
+  color: #4a1329;
+}
+
+body[data-theme="pink"] .notion-toggle-btn:hover {
+  background: #ffdeeb;
+  border-color: #c86f94;
+}
+
+body[data-theme="pink"] .notion-icon,
+body[data-theme="pink"] .editor-notion-link span,
+body[data-theme="pink"] .notion-dialog-icon {
+  background: #871948;
+  color: #ffeaf2;
+}
+
+body[data-theme="pink"] .notion-dialog {
+  background: #fde8f1;
+  border-color: #d995b2;
+  color: #4a1329;
+}
+
+body[data-theme="pink"] .notion-guide-card {
+  background: #f7cada;
+  border-color: #d995b2;
+}
+
+body[data-theme="pink"] .notion-field-label input {
+  background: #ffeaf2;
+  border-color: #d995b2;
+  color: #4a1329;
+}
+
+body[data-theme="pink"] .notion-field-label input:focus {
+  border-color: #b51f60;
+}
+
+body[data-theme="pink"] .editor-notion-link {
+  background: #f8c7da;
+  border-color: #d995b2;
+  color: #4a1329;
+}
+
+body[data-theme="pink"] .editor-notion-link:hover {
+  background: #ffdeeb;
+}
+
+body[data-theme="pink"] .notion-row-link {
+  background: #f1b5ce;
+  border-color: #d995b2;
+  color: #4a1329;
+}
+
 @media (max-width: 650px) {
   .theme-copy {
     display: none;

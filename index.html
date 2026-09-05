@@ -22,7 +22,23 @@
           <b id="today-count-badge" class="tab-badge">0</b>
         </button>
       </div>
-      <div class="nav-actions"><button id="expand-tab" class="icon-button expand-button" type="button" aria-label="Tam ekranda aç" title="Tam sekmede aç">⤢</button><button id="theme-toggle" class="theme-toggle" type="button" aria-label="Temayı değiştir"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-copy"><small>GÖRÜNÜM</small><b>Pembe tema</b></span></button><button id="open-form" class="primary add-topic-button"><span class="add-icon" aria-hidden="true">＋</span><span class="add-copy"><small>YENİ KAYIT</small><b>Konu ekle</b></span><kbd>N</kbd></button></div>
+      <div class="nav-actions">
+        <button id="notion-toggle-btn" class="notion-toggle-btn" type="button" title="Notion Entegrasyonu">
+          <span class="notion-icon">N</span>
+          <span class="notion-label">Notion</span>
+          <span id="notion-status-dot" class="notion-status-dot" title="Bağlantı bekleniyor"></span>
+        </button>
+        <button id="expand-tab" class="icon-button expand-button" type="button" aria-label="Tam ekranda aç" title="Tam sekmede aç">⤢</button>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Temayı değiştir">
+          <span class="theme-icon" aria-hidden="true">◐</span>
+          <span class="theme-copy"><small>GÖRÜNÜM</small><b>Pembe tema</b></span>
+        </button>
+        <button id="open-form" class="primary add-topic-button">
+          <span class="add-icon" aria-hidden="true">＋</span>
+          <span class="add-copy"><small>YENİ KAYIT</small><b>Konu ekle</b></span>
+          <kbd>N</kbd>
+        </button>
+      </div>
     </div>
   </nav>
   <main class="app-shell">
@@ -103,7 +119,9 @@
           <h2 id="dialog-title">Konu ekle</h2>
         </div>
         <div class="editor-header-actions">
-          <span id="save-hint">Değişiklikler kaydedilmedi</span><button id="close-dialog" class="icon-button" type="button" aria-label="Kapat">×</button>
+          <a id="editor-notion-link" class="editor-notion-link hidden" target="_blank" rel="noopener" title="Notion'da aç"><span>N</span> Notion'da Aç ↗</a>
+          <span id="save-hint">Değişiklikler kaydedilmedi</span>
+          <button id="close-dialog" class="icon-button" type="button" aria-label="Kapat">×</button>
         </div>
       </header><input id="edit-id" type="hidden">
       <div class="editor-layout">
@@ -143,7 +161,88 @@
       </footer>
     </form>
   </dialog>
+  <dialog id="notion-dialog" class="notion-dialog">
+    <div class="notion-modal-content">
+      <header class="dialog-header">
+        <div class="dialog-title-wrap">
+          <span class="notion-dialog-icon">N</span>
+          <div>
+            <h2>Notion Entegrasyonu</h2>
+            <p>Konularını ve notlarını Notion veritabanınla senkronize et.</p>
+          </div>
+        </div>
+        <button id="close-notion-dialog" class="icon-button" type="button" aria-label="Kapat">×</button>
+      </header>
+      
+      <div class="notion-dialog-body">
+        <div class="notion-guide-card">
+          <div class="guide-title">💡 30 Saniyede Nasıl Kurulur?</div>
+          <ol class="guide-steps">
+            <li><a href="https://www.notion.so/profile/integrations" target="_blank" rel="noopener">notion.so/profile/integrations</a> adresinden "New integration" oluşturup Token'ı al.</li>
+            <li>Notion'da bir Veritabanı (Database) oluştur veya aç.</li>
+            <li>Veritabanı sayfasında sağ üstteki <b>...</b> butonuna basıp <b>Connections &gt; NotMonk</b> seçerek yetki ver.</li>
+            <li>Veritabanı linkini veya ID'sini aşağıdaki alana yapıştır.</li>
+          </ol>
+        </div>
+
+        <form id="notion-config-form" class="notion-form" onsubmit="return false;">
+          <label class="notion-field-label">
+            <span>NOTION API TOKEN (SECRET)</span>
+            <input id="notion-token" type="password" placeholder="ntn_... veya secret_..." autocomplete="off">
+          </label>
+
+          <label class="notion-field-label">
+            <span>DATABASE ID VEYA VERİTABANI LİNKİ</span>
+            <input id="notion-db-id" type="text" placeholder="https://notion.so/... veya 32 haneli ID">
+          </label>
+
+          <div class="notion-checkbox-row">
+            <label class="toggle-checkbox">
+              <input id="notion-auto-sync" type="checkbox">
+              <span>Otomatik Senkronizasyon (Konu ve not değiştikçe Notion'ı güncelle)</span>
+            </label>
+          </div>
+
+          <div class="notion-test-row">
+            <button id="notion-test-btn" class="secondary" type="button">Bağlantıyı Test Et</button>
+            <span id="notion-status-msg" class="notion-status-msg"></span>
+          </div>
+        </form>
+
+        <div class="notion-sync-section">
+          <div class="sync-section-title">TOPLU SENKRONİZASYON</div>
+          <div class="sync-actions-row">
+            <button id="notion-push-all-btn" class="secondary sync-btn" type="button">
+              <span class="sync-emoji">📤</span>
+              <div class="sync-info">
+                <b>Tümünü Notion'a Aktar</b>
+                <small>NotMonk'taki tüm konuları Notion'a yükler</small>
+              </div>
+            </button>
+            <button id="notion-pull-all-btn" class="secondary sync-btn" type="button">
+              <span class="sync-emoji">📥</span>
+              <div class="sync-info">
+                <b>Notion'dan Konuları Çek</b>
+                <small>Notion tablosundaki konuları NotMonk'a aktarır</small>
+              </div>
+            </button>
+          </div>
+          <div id="notion-sync-progress" class="sync-progress hidden">
+            <div class="progress-bar-wrap">
+              <div id="notion-sync-bar" class="sync-bar-fill"></div>
+            </div>
+            <span id="notion-sync-text" class="sync-text">Senkronize ediliyor...</span>
+          </div>
+        </div>
+      </div>
+
+      <footer class="dialog-footer">
+        <button id="save-notion-config" class="primary" type="button">Ayarları Kaydet</button>
+      </footer>
+    </div>
+  </dialog>
   <dialog id="confirm-dialog" class="confirm-dialog"><div class="confirm-icon">!</div><h2 id="confirm-title">Emin misin?</h2><p id="confirm-message"></p><div class="confirm-actions"><button id="confirm-cancel" class="secondary" type="button">Geri dön</button><button id="confirm-accept" class="confirm-danger" type="button">Onayla</button></div></dialog>
+  <script src="notion.js"></script>
   <script src="roadmap.js"></script>
   <script src="app.js"></script>
 </body>
