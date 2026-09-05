@@ -101,6 +101,7 @@ const RichEditor = (() => {
     redoStack = [];
     lastSnapshot = editorEl.innerHTML;
     applyPrism();
+    initResizerAndExpand();
   }
 
   // ── Selection Toolbar ─────────────────────────────────────────────────────
@@ -180,6 +181,8 @@ const RichEditor = (() => {
       case 'bold':        document.execCommand('bold'); break;
       case 'italic':      document.execCommand('italic'); break;
       case 'strike':      document.execCommand('strikeThrough'); break;
+      case 'link':        insertLink(); break;
+      case 'image':       insertImage(); break;
       case 'inline-code': wrapInlineCode(); break;
       case 'h1':          wrapBlock('h1'); break;
       case 'h2':          wrapBlock('h2'); break;
@@ -468,6 +471,13 @@ const RichEditor = (() => {
       return;
     }
 
+    // Link: Ctrl+K or Cmd+K
+    if (isMetaOrCtrl && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      insertLink();
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       const sel = window.getSelection();
       let node = sel.anchorNode;
@@ -487,10 +497,28 @@ const RichEditor = (() => {
   function onPaste(e) {
     e.preventDefault();
     const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    if (!text) return;
+
+    const trimmed = text.trim();
+    const isUrl = /^https?:\/\/[^\s]+$/i.test(trimmed);
+    const isImageUrl = isUrl && /\.(jpeg|jpg|gif|png|webp|svg)($|\?)/i.test(trimmed);
+
+    // If pasted an image URL directly: auto-embed image
+    if (isImageUrl) {
+      insertImage(trimmed);
+      return;
+    }
+
+    // If pasted a URL and user has text selected: auto-link selection (Notion style)
+    const sel = window.getSelection();
+    if (isUrl && sel && sel.rangeCount && !sel.isCollapsed && editorEl.contains(sel.anchorNode)) {
+      insertLink(trimmed);
+      return;
+    }
+
     if (document.queryCommandSupported && document.queryCommandSupported('insertText')) {
       document.execCommand('insertText', false, text);
     } else {
-      const sel = window.getSelection();
       if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
         range.deleteContents();
@@ -648,12 +676,157 @@ const RichEditor = (() => {
     });
   }
 
+  // ── Links & Images ────────────────────────────────────────────────────────
+  function insertLink(customUrl) {
+    editorEl.focus();
+    let url = customUrl;
+    if (!url) {
+      url = prompt('Bağlantı URL\'si girin (örn: https://...):', 'https://');
+    }
+    if (!url || url.trim() === 'https://' || url.trim() === 'http://') return;
+    url = url.trim();
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+    restoreRange();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed) {
+      const range = sel.getRangeAt(0);
+      const text = range.toString();
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = text || url;
+      range.deleteContents();
+      range.insertNode(a);
+      sel.removeAllRanges();
+    } else {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = url;
+      insertBlockAtCaret(a);
+    }
+    hideToolbar();
+    pushUndoSnapshot(true);
+    onInput();
+  }
+
+  function insertImage(customUrl, customCaption) {
+    editorEl.focus();
+    let url = customUrl;
+    if (!url) {
+      url = prompt('Görsel URL\'si girin (örn: https://.../resim.png):', 'https://');
+    }
+    if (!url || url.trim() === 'https://' || url.trim() === 'http://') return;
+    url = url.trim();
+    if (!/^https?:\/\//i.test(url) && !url.startsWith('data:')) url = 'https://' + url;
+
+    const caption = customCaption !== undefined ? customCaption : (prompt('Görsel açıklaması (isteğe bağlı):') || '');
+
+    const figure = document.createElement('figure');
+    figure.className = 'editor-image-wrap';
+    figure.contentEditable = 'false';
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = caption || 'Görsel';
+    img.className = 'editor-image';
+    img.loading = 'lazy';
+    img.onerror = () => { img.alt = 'Görsel yüklenemedi: ' + url; };
+
+    figure.appendChild(img);
+    if (caption) {
+      const figcap = document.createElement('figcaption');
+      figcap.className = 'editor-image-caption';
+      figcap.textContent = caption;
+      figure.appendChild(figcap);
+    }
+
+    insertBlockAtCaret(figure);
+    hideToolbar();
+    pushUndoSnapshot(true);
+    onInput();
+  }
+
+  // ── Resizer & Full Width Controls ─────────────────────────────────────────
+  function initResizerAndExpand() {
+    const dialog = document.getElementById('topic-dialog');
+    const resizer = document.getElementById('editor-resizer');
+    const expandBtn = document.getElementById('toggle-editor-expand');
+    const linkBtn = document.getElementById('toolbar-link-btn');
+    const imgBtn = document.getElementById('toolbar-image-btn');
+
+    if (linkBtn) linkBtn.onclick = () => insertLink();
+    if (imgBtn) imgBtn.onclick = () => insertImage();
+
+    // Full-width expand toggle
+    if (expandBtn && dialog) {
+      const savedExpanded = localStorage.getItem('notmonk_editor_expanded') === 'true';
+      if (savedExpanded) {
+        dialog.classList.add('full-width');
+        expandBtn.textContent = '⤡';
+      }
+      expandBtn.onclick = () => {
+        const isFull = dialog.classList.toggle('full-width');
+        expandBtn.textContent = isFull ? '⤡' : '⤢';
+        localStorage.setItem('notmonk_editor_expanded', String(isFull));
+      };
+    }
+
+    // Draggable resizer between sidebar and notes
+    if (resizer && dialog) {
+      const savedWidth = localStorage.getItem('notmonk_editor_sidebar_w');
+      if (savedWidth) {
+        dialog.style.setProperty('--editor-sidebar-w', savedWidth);
+      }
+
+      let isDragging = false;
+      let startX = 0;
+      let startWidth = 380;
+
+      resizer.addEventListener('mousedown', e => {
+        isDragging = true;
+        resizer.classList.add('is-dragging');
+        startX = e.clientX;
+        const currentW = getComputedStyle(dialog).getPropertyValue('--editor-sidebar-w') || '380px';
+        startWidth = parseInt(currentW, 10) || 380;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
+
+      window.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        const delta = e.clientX - startX;
+        const newWidth = Math.max(220, Math.min(650, startWidth + delta));
+        dialog.style.setProperty('--editor-sidebar-w', `${newWidth}px`);
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        resizer.classList.remove('is-dragging');
+        document.body.style.removeProperty('cursor');
+        document.body.style.removeProperty('user-select');
+        const finalW = dialog.style.getPropertyValue('--editor-sidebar-w');
+        if (finalW) localStorage.setItem('notmonk_editor_sidebar_w', finalW);
+      });
+    }
+  }
+
   // ── Plain text export (for Notion sync) ──────────────────────────────────
   function getPlainText() {
     const clone = editorEl.cloneNode(true);
     clone.querySelectorAll('pre').forEach(pre => {
       pre.before(document.createTextNode('\n' + pre.textContent + '\n'));
       pre.remove();
+    });
+    clone.querySelectorAll('img').forEach(img => {
+      img.replaceWith(document.createTextNode(`\n![${img.alt || 'Görsel'}](${img.src})\n`));
+    });
+    clone.querySelectorAll('a').forEach(a => {
+      a.replaceWith(document.createTextNode(`[${a.textContent}](${a.href})`));
     });
     clone.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
     clone.querySelectorAll('h1,h2,h3').forEach(h => {
@@ -664,5 +837,5 @@ const RichEditor = (() => {
     return clone.textContent.replace(/\n{3,}/g, '\n\n').trim();
   }
 
-  return { init, getHTML, setHTML, getPlainText, insertCodeBlock, insertTerminalBlock, execCmd, applyPrism };
+  return { init, getHTML, setHTML, getPlainText, insertCodeBlock, insertTerminalBlock, execCmd, applyPrism, insertLink, insertImage, initResizerAndExpand };
 })();

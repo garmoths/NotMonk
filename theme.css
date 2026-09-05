@@ -657,9 +657,31 @@ body[data-theme="pink"] .module-card:hover {
   box-shadow: 0 4px 16px rgba(135, 25, 72, 0.12);
 }
 
-body[data-theme="pink"] .card-index {
+body[data-theme="pink"] .card-index,
+body[data-theme="pink"] .card-avatar {
   background: #f1b5ce;
+  border-color: #d995b2;
   color: #8c194b;
+}
+
+body[data-theme="pink"] .editor-resizer {
+  background: #d995b2;
+}
+
+body[data-theme="pink"] .editor-resizer:hover,
+body[data-theme="pink"] .editor-resizer.is-dragging {
+  background: #d92f78;
+}
+
+body[data-theme="pink"] .notes-tool-btn {
+  background: #ffeaf2;
+  border-color: #d995b2;
+  color: #7d1040;
+}
+
+body[data-theme="pink"] .notes-tool-btn:hover {
+  background: #ffd6e7;
+  color: #55082a;
 }
 
 body[data-theme="pink"] .card-status-badge.status-todo {

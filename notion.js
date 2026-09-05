@@ -163,6 +163,47 @@ const NotionAPI = {
     return props;
   },
 
+  // Helper to parse inline styles (bold, italic, strike, code, links) into Notion rich_text
+  parseRichTextSpans(container) {
+    const spans = [];
+    const walk = (node, annotations = {}) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent;
+        if (text) {
+          spans.push({
+            type: "text",
+            text: {
+              content: text.slice(0, 2000),
+              link: annotations.link ? { url: annotations.link } : null
+            },
+            annotations: {
+              bold: Boolean(annotations.bold),
+              italic: Boolean(annotations.italic),
+              strikethrough: Boolean(annotations.strike),
+              code: Boolean(annotations.code)
+            }
+          });
+        }
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = node.tagName.toLowerCase();
+      const currentAnn = { ...annotations };
+      if (tag === "b" || tag === "strong") currentAnn.bold = true;
+      if (tag === "i" || tag === "em") currentAnn.italic = true;
+      if (tag === "s" || tag === "strike" || tag === "del") currentAnn.strike = true;
+      if (tag === "code" && !node.classList.contains("language-")) currentAnn.code = true;
+      if (tag === "a" && node.href) {
+        currentAnn.link = node.href;
+      }
+
+      node.childNodes.forEach(child => walk(child, currentAnn));
+    };
+
+    walk(container);
+    return spans.length > 0 ? spans.slice(0, 50) : [{ type: "text", text: { content: (container.textContent || "").slice(0, 2000) } }];
+  },
+
   buildChildrenBlocks(notes) {
     if (!notes || !notes.trim()) return [];
 
@@ -201,6 +242,22 @@ const NotionAPI = {
 
       if (node.nodeType !== Node.ELEMENT_NODE) return;
       const tag = node.tagName.toLowerCase();
+
+      // Image block (Figure or Img tag)
+      if (tag === "figure" || tag === "img" || node.classList.contains("editor-image-wrap") || node.querySelector("img")) {
+        const img = tag === "img" ? node : node.querySelector("img");
+        if (img && img.src && /^https?:\/\//i.test(img.src)) {
+          blocks.push({
+            object: "block",
+            type: "image",
+            image: {
+              type: "external",
+              external: { url: img.src }
+            }
+          });
+          return;
+        }
+      }
 
       // Code block
       if (node.classList.contains("code-block-wrap") || node.querySelector("pre.code-block")) {
@@ -242,44 +299,39 @@ const NotionAPI = {
         return;
       }
 
-      // Headings
+      // Headings (with link & formatting support)
       if (tag === "h1") {
-        const text = node.textContent.trim();
-        if (text) blocks.push({ object: "block", type: "heading_1", heading_1: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        blocks.push({ object: "block", type: "heading_1", heading_1: { rich_text: this.parseRichTextSpans(node) } });
         return;
       }
       if (tag === "h2") {
-        const text = node.textContent.trim();
-        if (text) blocks.push({ object: "block", type: "heading_2", heading_2: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        blocks.push({ object: "block", type: "heading_2", heading_2: { rich_text: this.parseRichTextSpans(node) } });
         return;
       }
       if (tag === "h3") {
-        const text = node.textContent.trim();
-        if (text) blocks.push({ object: "block", type: "heading_3", heading_3: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        blocks.push({ object: "block", type: "heading_3", heading_3: { rich_text: this.parseRichTextSpans(node) } });
         return;
       }
 
       // Quotes
       if (tag === "blockquote" || node.classList.contains("rich-quote")) {
-        const text = node.textContent.trim();
-        if (text) blocks.push({ object: "block", type: "quote", quote: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        blocks.push({ object: "block", type: "quote", quote: { rich_text: this.parseRichTextSpans(node) } });
         return;
       }
 
       // Callouts / Tips
       if (node.classList.contains("info-block")) {
-        const text = node.textContent.trim();
-        if (text) blocks.push({ object: "block", type: "callout", callout: { icon: { emoji: "💡" }, rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        blocks.push({ object: "block", type: "callout", callout: { icon: { emoji: "💡" }, rich_text: this.parseRichTextSpans(node) } });
         return;
       }
 
-      // General paragraph
+      // General paragraph (with link, bold, italic, code support)
       const text = node.textContent.trim();
       if (text) {
         blocks.push({
           object: "block",
           type: "paragraph",
-          paragraph: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] }
+          paragraph: { rich_text: this.parseRichTextSpans(node) }
         });
       }
     });
@@ -287,16 +339,121 @@ const NotionAPI = {
     return blocks.slice(0, 95);
   },
 
-  async createPage(token, rawDatabaseId, topic, schemaProperties = {}) {
-    const databaseId = this.cleanDatabaseId(rawDatabaseId);
-    const properties = this.buildProperties(topic, schemaProperties);
+  // Search workspace for shared Teamspaces, parent pages and databases
+  async searchWorkspaces(token) {
+    if (!token) throw new Error("Notion API Token eksik.");
+    const res = await fetch(`${NOTION_BASE_URL}/search`, {
+      method: "POST",
+      headers: this.getHeaders(token),
+      body: JSON.stringify({
+        sort: { direction: "descending", timestamp: "last_edited_time" },
+        page_size: 100
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Notion araması başarısız: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const areas = [];
+
+    for (const item of (data.results || [])) {
+      let title = "";
+      if (item.object === "database") {
+        title = item.title?.map(t => t.plain_text).join("") || "";
+      } else if (item.object === "page") {
+        for (const prop of Object.values(item.properties || {})) {
+          if (prop.type === "title") {
+            title = prop.title?.map(t => t.plain_text).join("") || "";
+            break;
+          }
+        }
+      }
+
+      if (!title || !title.trim()) continue;
+
+      let icon = null;
+      let iconType = null;
+      let iconUrl = null;
+
+      if (item.icon) {
+        if (item.icon.type === "emoji") {
+          icon = item.icon.emoji;
+          iconType = "emoji";
+        } else if (item.icon.type === "external" && item.icon.external?.url) {
+          icon = null;
+          iconType = "image";
+          iconUrl = item.icon.external.url;
+        } else if (item.icon.type === "file" && item.icon.file?.url) {
+          icon = null;
+          iconType = "image";
+          iconUrl = item.icon.file.url;
+        }
+      }
+
+      areas.push({
+        id: item.id.replace(/-/g, ""),
+        rawId: item.id,
+        title: title.trim(),
+        type: item.object, // "page" or "database"
+        icon,
+        iconType,
+        iconUrl,
+        url: item.url,
+        parent: item.parent
+      });
+    }
+
+    return areas;
+  },
+
+  async createPage(token, rawParentId, topic, isDatabase = true, schemaProperties = {}) {
+    const parentId = this.cleanDatabaseId(rawParentId);
     const children = this.buildChildrenBlocks(topic.notes);
 
-    const body = {
-      parent: { database_id: databaseId },
-      properties,
-      children: children.length > 0 ? children : undefined
-    };
+    let body = {};
+    if (isDatabase) {
+      const properties = this.buildProperties(topic, schemaProperties);
+      body = {
+        parent: { database_id: parentId },
+        properties,
+        children: children.length > 0 ? children : undefined
+      };
+    } else {
+      // Create as native Notion Page (Document File) inside a Teamspace / Parent Page
+      const statusMap = { todo: "Başlamadım ⏳", learning: "Öğreniyorum 📖", done: "Öğrendim ✅" };
+      const statusText = statusMap[topic.status] || "Başlamadım";
+      
+      const metaBlocks = [
+        {
+          object: "block",
+          type: "callout",
+          callout: {
+            icon: { emoji: topic.status === "done" ? "✅" : (topic.status === "learning" ? "⚡" : "📌") },
+            rich_text: [{
+              type: "text",
+              text: { content: `Durum: ${statusText}  |  Alan: ${topic.category || "Genel"}${topic.resource ? `\nKaynak: ${topic.resource}` : ""}` }
+            }]
+          }
+        },
+        {
+          object: "block",
+          type: "divider",
+          divider: {}
+        }
+      ];
+
+      body = {
+        parent: { page_id: parentId },
+        properties: {
+          title: [{ type: "text", text: { content: topic.title || "İsimsiz Konu" } }]
+        },
+        icon: { emoji: topic.status === "done" ? "✅" : "📄" },
+        children: [...metaBlocks, ...children].slice(0, 95)
+      };
+    }
 
     const res = await fetch(`${NOTION_BASE_URL}/pages`, {
       method: "POST",
@@ -316,9 +473,48 @@ const NotionAPI = {
     };
   },
 
-  async updatePage(token, pageId, topic, schemaProperties = {}) {
+  async updatePageBlocks(token, pageId, notes) {
+    if (!token || !pageId) return;
+    const cleanId = this.cleanDatabaseId(pageId);
+    const newBlocks = this.buildChildrenBlocks(notes);
+    if (!newBlocks.length) return;
+
+    try {
+      const existingRes = await fetch(`${NOTION_BASE_URL}/blocks/${cleanId}/children?page_size=40`, {
+        method: "GET",
+        headers: this.getHeaders(token)
+      });
+      if (existingRes.ok) {
+        const existingData = await existingRes.json();
+        // Delete up to 15 old blocks (skip top callout if desired)
+        for (const block of (existingData.results || []).slice(0, 15)) {
+          await fetch(`${NOTION_BASE_URL}/blocks/${block.id}`, {
+            method: "DELETE",
+            headers: this.getHeaders(token)
+          }).catch(() => {});
+        }
+      }
+
+      await fetch(`${NOTION_BASE_URL}/blocks/${cleanId}/children`, {
+        method: "PATCH",
+        headers: this.getHeaders(token),
+        body: JSON.stringify({ children: newBlocks.slice(0, 95) })
+      });
+    } catch (e) {
+      console.warn("Sayfa blokları güncellenirken hata oluştu:", e);
+    }
+  },
+
+  async updatePage(token, pageId, topic, isDatabase = true, schemaProperties = {}) {
     if (!pageId) throw new Error("Sayfa ID'si belirtilmemiş.");
-    const properties = this.buildProperties(topic, schemaProperties);
+    let properties = {};
+    if (isDatabase) {
+      properties = this.buildProperties(topic, schemaProperties);
+    } else {
+      properties = {
+        title: [{ type: "text", text: { content: topic.title || "İsimsiz Konu" } }]
+      };
+    }
 
     const res = await fetch(`${NOTION_BASE_URL}/pages/${pageId}`, {
       method: "PATCH",
@@ -331,6 +527,11 @@ const NotionAPI = {
       throw new Error(err.message || `Sayfa güncellenemedi: ${res.status}`);
     }
 
+    // Also update notes blocks
+    if (topic.notes) {
+      await this.updatePageBlocks(token, pageId, topic.notes);
+    }
+
     const data = await res.json();
     return {
       notionPageId: data.id,
@@ -338,21 +539,33 @@ const NotionAPI = {
     };
   },
 
-  async syncTopic(token, databaseId, topic, schemaProperties = {}) {
-    if (!token || !databaseId) return null;
+  async syncTopic(token, defaultParentId, topic, schemaProperties = {}, areaMapping = {}) {
+    if (!token) return null;
+
+    // Determine target parent (check if area is mapped to a specific Teamspace / Parent Page or Database)
+    let targetParentId = defaultParentId;
+    let isDatabase = true;
+
+    if (topic.category && areaMapping[topic.category]) {
+      const mapped = areaMapping[topic.category];
+      targetParentId = mapped.id || mapped;
+      isDatabase = mapped.type ? mapped.type === "database" : true;
+    }
+
+    if (!targetParentId) return null;
+
     try {
       if (topic.notionPageId) {
-        return await this.updatePage(token, topic.notionPageId, topic, schemaProperties);
+        return await this.updatePage(token, topic.notionPageId, topic, isDatabase, schemaProperties);
       } else {
-        return await this.createPage(token, databaseId, topic, schemaProperties);
+        return await this.createPage(token, targetParentId, topic, isDatabase, schemaProperties);
       }
     } catch (e) {
       console.warn("Notion senkronizasyon hatası:", e);
-      // If page was deleted in Notion (404), recreate it
       if (e.message && (e.message.includes("Could not find page") || e.message.includes("404"))) {
         topic.notionPageId = null;
         topic.notionUrl = null;
-        return await this.createPage(token, databaseId, topic, schemaProperties);
+        return await this.createPage(token, targetParentId, topic, isDatabase, schemaProperties);
       }
       throw e;
     }
