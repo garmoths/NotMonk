@@ -1004,6 +1004,20 @@ const NotionAPI = {
     }
   },
 
+  async archivePage(token, pageId) {
+    if (!token || !pageId) return;
+    const cleanId = this.cleanDatabaseId(pageId);
+    try {
+      await fetch(`${NOTION_BASE_URL}/pages/${cleanId}`, {
+        method: "PATCH",
+        headers: this.getHeaders(token),
+        body: JSON.stringify({ archived: true })
+      });
+    } catch (e) {
+      console.warn("[NotMonk] Sayfa arşivlenirken hata:", e);
+    }
+  },
+
   async syncTopic(token, defaultParentId, topic, schemaProperties = {}, areaMapping = {}, umbrellaParentId = null) {
     if (!token) return null;
 

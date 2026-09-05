@@ -28,6 +28,9 @@
           <span class="nav-btn-label">Notion</span>
           <span id="notion-status-dot" class="notion-status-dot" title="Bağlantı bekleniyor"></span>
         </button>
+        <button id="quick-sync-btn" class="nav-icon-btn" type="button" title="Notion ile Şimdi Eşitle" aria-label="Notion ile Şimdi Eşitle">
+          <span class="sync-icon">🔄</span>
+        </button>
         <button id="theme-toggle" class="nav-icon-btn theme-toggle" type="button" aria-label="Temayı değiştir" title="Tema değiştir">
           <span class="theme-icon" aria-hidden="true">◐</span>
           <span class="nav-btn-label" id="theme-label">Pembe tema</span>
@@ -284,8 +287,8 @@
 
           <div class="notion-checkbox-row">
             <label class="toggle-checkbox">
-              <input id="notion-auto-sync" type="checkbox">
-              <span>Otomatik Senkronizasyon (Konu ve not değiştikçe Notion'ı güncelle)</span>
+              <input id="notion-auto-sync" type="checkbox" checked>
+              <span>Canlı Otomatik Senkronizasyon (Veriler Notion ile anlık ve çift yönlü eşitlenir)</span>
             </label>
           </div>
 
