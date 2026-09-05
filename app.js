@@ -511,9 +511,6 @@ function openForm(topic = null) {
       RichEditor.setHTML(initialNotes);
     }
     $("#resource").value = topic.resource || "";
-    if (typeof RichEditor !== "undefined") {
-      RichEditor.setHTML("");
-    }
   } else {
     $("#notes").value = "";
     if (typeof RichEditor !== "undefined") {

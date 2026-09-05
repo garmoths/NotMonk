@@ -395,6 +395,18 @@ body[data-theme="pink"] .notes-toolbar {
   color: #73435b;
 }
 
+body[data-theme="pink"] .rich-notes-area::-webkit-scrollbar-thumb,
+body[data-theme="pink"] .topic-sidebar::-webkit-scrollbar-thumb,
+body[data-theme="pink"] .category-list::-webkit-scrollbar-thumb {
+  background: rgba(122, 33, 72, 0.25);
+}
+
+body[data-theme="pink"] .rich-notes-area::-webkit-scrollbar-thumb:hover,
+body[data-theme="pink"] .topic-sidebar::-webkit-scrollbar-thumb:hover,
+body[data-theme="pink"] .category-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(122, 33, 72, 0.45);
+}
+
 body[data-theme="pink"] .tool-btn {
   background: #ffeaf2;
   border-color: #d989aa;

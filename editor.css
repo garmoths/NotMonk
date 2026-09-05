@@ -3,7 +3,7 @@
   width: min(1320px, calc(100% - 32px));
   height: min(860px, calc(100vh - 36px));
   max-width: none;
-  max-height: none;
+  max-height: calc(100vh - 36px);
   overflow: hidden;
   border-radius: 16px;
   background: var(--panel);
@@ -12,11 +12,14 @@
   color: var(--text);
   box-shadow: 0 32px 100px rgba(0, 0, 0, 0.85);
   transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), height 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
 }
 
 .topic-page.full-width {
   width: calc(100vw - 24px) !important;
   height: calc(100vh - 24px) !important;
+  max-height: calc(100vh - 24px) !important;
   border-radius: 12px;
 }
 
@@ -27,13 +30,18 @@
 
 .topic-page form {
   height: 100%;
+  max-height: 100%;
+  min-height: 0;
   padding: 0;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1 1 0%;
 }
 
 /* ── Editor Header ────────────────────────────────────────────────────────── */
 .editor-header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -88,9 +96,12 @@
 
 /* ── Editor Layout (Sidebar + Notes) ─────────────────────────────────────── */
 .editor-layout {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
   display: grid;
   grid-template-columns: var(--editor-sidebar-w, 380px) 6px 1fr;
-  min-height: 0;
+  overflow: hidden;
   position: relative;
 }
 
@@ -120,9 +131,12 @@
 
 .topic-sidebar {
   border-right: 0;
-  padding: 32px 28px;
+  padding: 28px 24px;
   background: #090d13;
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .topic-sidebar label {
@@ -353,17 +367,22 @@
 
 /* ── Notes Editor (Right Area) ───────────────────────────────────────────── */
 .notes-editor {
-  display: grid;
-  grid-template-rows: auto 1fr;
+  flex: 1 1 0%;
   min-width: 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #0b0f15;
   position: relative;
 }
 
 .notes-toolbar {
+  flex-shrink: 0;
   height: 44px;
   border-bottom: 1px solid var(--line);
-  padding: 0 20px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -372,38 +391,13 @@
   font: 700 10px monospace;
   letter-spacing: 0.08em;
   background: var(--panel);
+  z-index: 10;
 }
 
 .notes-toolbar-left {
   display: flex;
   align-items: center;
   gap: 14px;
-}
-
-.notes-quick-tools {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.notes-tool-btn {
-  border: 1px solid var(--line);
-  background: var(--panel2);
-  color: var(--muted);
-  font: 500 11px Inter, system-ui, sans-serif;
-  padding: 3px 8px;
-  border-radius: 5px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.15s ease;
-}
-
-.notes-tool-btn:hover {
-  color: var(--text);
-  border-color: var(--line2);
-  background: var(--panel);
 }
 
 .notes-label {
@@ -421,7 +415,7 @@
 .notes-selection-hint {
   font: 500 11px Inter, system-ui, sans-serif;
   color: var(--muted);
-  opacity: 0.65;
+  opacity: 0.75;
   letter-spacing: normal;
 }
 
@@ -433,17 +427,22 @@
 
 /* Editor Wrapper & Area */
 .editor-content-wrapper {
-  position: relative;
+  flex: 1 1 0%;
+  min-height: 0;
   height: 100%;
+  position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
 .rich-notes-area {
-  flex: 1;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 100%;
   overflow-y: auto;
-  padding: 24px 32px 65vh 32px;
+  overflow-x: hidden;
+  padding: 24px 32px 140px 32px;
   color: var(--text);
   font: 14px/1.75 Inter, system-ui, sans-serif;
   outline: none;
@@ -1157,6 +1156,7 @@ pre.terminal-block code:empty::before {
 
 /* ── Editor Footer ────────────────────────────────────────────────────────── */
 .editor-footer {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1164,6 +1164,8 @@ pre.terminal-block code:empty::before {
   padding: 16px 24px;
   border-top: 1px solid var(--line);
   background: #090d13;
+  z-index: 30;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
 }
 
 .footer-spacer {
@@ -1178,21 +1180,74 @@ pre.terminal-block code:empty::before {
   min-width: 100px;
 }
 
+/* ── Sleek Custom Scrollbars ─────────────────────────────────────────────── */
+.rich-notes-area::-webkit-scrollbar,
+.topic-sidebar::-webkit-scrollbar,
+.category-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rich-notes-area::-webkit-scrollbar-track,
+.topic-sidebar::-webkit-scrollbar-track,
+.category-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rich-notes-area::-webkit-scrollbar-thumb,
+.topic-sidebar::-webkit-scrollbar-thumb,
+.category-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+}
+
+.rich-notes-area::-webkit-scrollbar-thumb:hover,
+.topic-sidebar::-webkit-scrollbar-thumb:hover,
+.category-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
 @media (max-width: 860px) {
   .topic-page {
-    width: 100%;
-    height: 100vh;
-    border-radius: 0;
+    width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
   }
   .editor-layout {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .editor-resizer {
+    display: none !important;
   }
   .topic-sidebar {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
+    height: auto !important;
+    flex-shrink: 0 !important;
+    overflow: visible !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--line) !important;
+    padding: 20px 20px !important;
   }
   .notes-editor {
-    min-height: 380px;
+    min-height: 450px !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .editor-content-wrapper {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .rich-notes-area {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 380px !important;
+    padding: 20px 20px 140px 20px !important;
+  }
+  .editor-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 50 !important;
   }
 }
