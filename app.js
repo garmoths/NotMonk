@@ -45,12 +45,23 @@ const saveNotionStorage = () => storageSet({ notionConfig: { token: state.notion
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   const saved = await storageGet(["topics", "preferences", "categories", "notionConfig", "categoryMetadata", "areaMapping"]);
-  const installRoadmap = saved.preferences?.roadmapVersion !== ROADMAP_VERSION;
-  state.topics = (installRoadmap ? starterTopics : (Array.isArray(saved.topics) ? saved.topics : starterTopics))
-    .map(t => ({ ...t, status: ["practiced", "mastered"].includes(t.status) ? "done" : t.status }));
-  state.categories = installRoadmap ? [...DEFAULT_CATEGORIES] : (Array.isArray(saved.categories) ? saved.categories : [...DEFAULT_CATEGORIES]);
+  const isDefaultDemoCategory = cat => typeof NOTMONK_CATEGORIES !== "undefined" && NOTMONK_CATEGORIES.includes(cat);
+  const hasNotion = Boolean(saved.notionConfig?.token || (saved.areaMapping && Object.keys(saved.areaMapping).length > 0));
+
   state.categoryMetadata = saved.categoryMetadata || {};
   state.areaMapping = saved.areaMapping || {};
+
+  if (hasNotion) {
+    // If Notion is configured or has areas, do NOT install the demo cybersecurity roadmap!
+    state.categories = (Array.isArray(saved.categories) ? saved.categories : []).filter(c => !isDefaultDemoCategory(c));
+    state.topics = (Array.isArray(saved.topics) ? saved.topics : []).filter(t => !isDefaultDemoCategory(t.category));
+  } else {
+    const installRoadmap = saved.preferences?.roadmapVersion !== ROADMAP_VERSION;
+    state.topics = (installRoadmap ? starterTopics : (Array.isArray(saved.topics) ? saved.topics : starterTopics))
+      .map(t => ({ ...t, status: ["practiced", "mastered"].includes(t.status) ? "done" : t.status }));
+    state.categories = installRoadmap ? [...DEFAULT_CATEGORIES] : (Array.isArray(saved.categories) ? saved.categories : [...DEFAULT_CATEGORIES]);
+  }
+
   state.topics.forEach(t => { if (!state.categories.includes(t.category)) state.categories.push(t.category); });
   Object.assign(state, saved.preferences || {});
   state.activeTab = "modules";
@@ -62,7 +73,7 @@ async function init() {
     state.notionAutoSync = Boolean(saved.notionConfig.autoSync);
   }
 
-  if (installRoadmap || !saved.topics || !saved.categories) { await save(); await savePreferences(); }
+  if (hasNotion || !saved.topics || !saved.categories) { await save(); await savePreferences(); }
   bindEvents();
   bindCategoryEvents();
   bindNotionEvents();
@@ -838,6 +849,17 @@ function bindNotionEvents() {
   if (pushBtn) pushBtn.onclick = pushAllToNotion;
   const pullBtn = $("#notion-pull-all-btn");
   if (pullBtn) pullBtn.onclick = pullAllFromNotion;
+  const purgeBtn = $("#purge-demo-btn");
+  if (purgeBtn) {
+    purgeBtn.onclick = async () => {
+      const isDefaultDemoCategory = cat => typeof NOTMONK_CATEGORIES !== "undefined" && NOTMONK_CATEGORIES.includes(cat);
+      state.categories = state.categories.filter(c => !isDefaultDemoCategory(c));
+      state.topics = state.topics.filter(t => !isDefaultDemoCategory(t.category));
+      await save();
+      render();
+      alert("Örnek şablon temizlendi. Artık yalnızca senin Notion alanların ve konuların görünüyor.");
+    };
+  }
 }
 
 function openNotionDialog() {
@@ -1063,6 +1085,10 @@ async function pullAllFromNotion() {
         progressBar.style.width = "60%";
       }
     );
+
+    const isDefaultDemoCategory = cat => typeof NOTMONK_CATEGORIES !== "undefined" && NOTMONK_CATEGORIES.includes(cat);
+    state.categories = state.categories.filter(c => !isDefaultDemoCategory(c));
+    state.topics = state.topics.filter(t => !isDefaultDemoCategory(t.category));
 
     // 1. Sync Areas / Teamspaces
     let areaCount = 0;
