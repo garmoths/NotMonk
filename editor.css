@@ -342,25 +342,17 @@
 }
 
 .notes-toolbar {
-  min-height: 48px;
+  height: 44px;
   border-bottom: 1px solid var(--line);
-  padding: 6px 20px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
   color: #7b8591;
   font: 700 10px monospace;
   letter-spacing: 0.08em;
   background: var(--panel);
-  flex-wrap: wrap;
-}
-
-.notes-toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 .notes-label {
@@ -369,100 +361,23 @@
   color: var(--muted);
 }
 
-.notes-quick-tools {
+.notes-toolbar-meta {
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 18px;
 }
 
-.tool-btn {
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel2);
-  color: var(--text);
-  font: 600 11px Inter, system-ui, sans-serif;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  transition: all 0.15s ease;
-  white-space: nowrap;
+.notes-selection-hint {
+  font: 500 11px Inter, system-ui, sans-serif;
+  color: var(--muted);
+  opacity: 0.65;
+  letter-spacing: normal;
 }
 
-.tool-btn:hover {
-  background: var(--panel);
-  border-color: var(--line2);
-  color: var(--accent);
-}
-
-.tool-btn-action {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 0 10px;
-}
-
-.tool-btn-action .btn-icon {
-  font-size: 12px;
-}
-
-.tool-divider,
-.float-divider {
-  width: 1px;
-  height: 18px;
-  background: var(--line2);
-  margin: 0 4px;
-}
-
-/* Color Dropdown */
-.color-dropdown-wrapper {
-  position: relative;
-  display: inline-block;
-}
-
-.color-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.color-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-.color-palette-popover {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 6px;
-  background: var(--panel);
-  border: 1px solid var(--line2);
-  border-radius: 10px;
-  padding: 8px;
-  display: flex;
-  gap: 6px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-  z-index: 50;
-}
-
-.color-circle {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s;
-}
-
-.color-circle:hover {
-  transform: scale(1.15);
-  border-color: #fff;
+@media (max-width: 600px) {
+  .notes-selection-hint {
+    display: none;
+  }
 }
 
 /* Editor Wrapper & Area */
@@ -696,20 +611,21 @@ pre.terminal-block code:empty::before {
   color: #1a4d3b;
 }
 
-/* Floating Selection Toolbar */
+/* Floating Selection Toolbar (Notion Style) */
 .editor-floating-toolbar {
   position: absolute;
   z-index: 100;
-  background: rgba(13, 18, 26, 0.95);
-  backdrop-filter: blur(12px);
+  background: rgba(14, 19, 28, 0.96);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--line2);
   border-radius: 10px;
-  padding: 5px 8px;
+  padding: 4px 6px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
-  animation: floatFadeIn 0.15s ease-out;
+  gap: 2px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(108, 142, 240, 0.1);
+  animation: floatFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
 }
 
 @keyframes floatFadeIn {
@@ -717,19 +633,35 @@ pre.terminal-block code:empty::before {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+.float-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.float-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--line2);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
 .float-btn {
-  height: 26px;
-  padding: 0 7px;
+  height: 28px;
+  padding: 0 8px;
   border: 0;
   background: transparent;
   color: var(--text);
   font: 600 12px Inter, system-ui, sans-serif;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   transition: all 0.12s ease;
+  white-space: nowrap;
 }
 
 .float-btn:hover {
@@ -737,8 +669,32 @@ pre.terminal-block code:empty::before {
   color: var(--accent);
 }
 
+.float-block-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 8px;
+}
+
+.float-icon {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
 .float-color {
-  padding: 0 4px;
+  padding: 0 5px;
+  height: 28px;
+}
+
+.float-color .color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  transition: transform 0.12s;
+}
+
+.float-color:hover .color-dot {
+  transform: scale(1.3);
 }
 
 /* Prism Tokens Styling */

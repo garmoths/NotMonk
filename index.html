@@ -147,62 +147,50 @@
         </aside>
         <section class="notes-editor">
           <div class="notes-toolbar">
-            <div class="notes-toolbar-left">
-              <span class="notes-label">NOT DEFTERİ</span>
-              <div class="notes-quick-tools" id="notes-quick-tools">
-                <button type="button" class="tool-btn" data-cmd="h1" title="Büyük Başlık (H1)">H1</button>
-                <button type="button" class="tool-btn" data-cmd="h2" title="Orta Başlık (H2)">H2</button>
-                <button type="button" class="tool-btn" data-cmd="bold" title="Kalın (Ctrl+B)"><b>B</b></button>
-                <button type="button" class="tool-btn" data-cmd="italic" title="İtalik (Ctrl+I)"><i>I</i></button>
-                <button type="button" class="tool-btn" data-cmd="strike" title="Üstü Çizili"><s>S</s></button>
-                <button type="button" class="tool-btn" data-cmd="inline-code" title="Satır İçi Kod">&lt;/&gt;</button>
-                <div class="tool-divider"></div>
-                <button type="button" class="tool-btn tool-btn-action" data-cmd="code-block" title="Kod Bloğu Ekle">
-                  <span class="btn-icon">⚡</span> Kod Bloğu
-                </button>
-                <button type="button" class="tool-btn tool-btn-action" data-cmd="terminal" title="Terminal Komutu Ekle">
-                  <span class="btn-icon">$</span> Terminal
-                </button>
-                <button type="button" class="tool-btn tool-btn-action" data-cmd="info" title="İpucu / Not Ekle">
-                  <span class="btn-icon">💡</span> İpucu
-                </button>
-                <button type="button" class="tool-btn tool-btn-action" data-cmd="quote" title="Alıntı Ekle">
-                  <span class="btn-icon">”</span> Alıntı
-                </button>
-                <div class="tool-divider"></div>
-                <div class="color-dropdown-wrapper">
-                  <button type="button" class="tool-btn color-trigger" id="color-trigger-btn" title="Yazı Rengi">
-                    <span class="color-dot" style="background:var(--accent)"></span> Renk
-                  </button>
-                  <div class="color-palette-popover hidden" id="color-palette-popover">
-                    <button type="button" class="color-circle" data-cmd="color" data-val="#e9edef" style="background:#e9edef" title="Varsayılan"></button>
-                    <button type="button" class="color-circle" data-cmd="color" data-val="#6c8ef0" style="background:#6c8ef0" title="İndigo"></button>
-                    <button type="button" class="color-circle" data-cmd="color" data-val="#34d399" style="background:#34d399" title="Yeşil"></button>
-                    <button type="button" class="color-circle" data-cmd="color" data-val="#fbbf24" style="background:#fbbf24" title="Sarı"></button>
-                    <button type="button" class="color-circle" data-cmd="color" data-val="#f87171" style="background:#f87171" title="Kırmızı"></button>
-                    <button type="button" class="color-circle" data-cmd="color" data-val="#f472b6" style="background:#f472b6" title="Pembe"></button>
-                  </div>
-                </div>
-              </div>
+            <span class="notes-label">NOT DEFTERİ</span>
+            <div class="notes-toolbar-meta">
+              <span class="notes-selection-hint">Metni veya satırı seçince biçimlendirme paneli açılır</span>
+              <span><b id="note-count">0</b> karakter</span>
             </div>
-            <span><b id="note-count">0</b> karakter</span>
           </div>
           <div class="editor-content-wrapper">
-            <!-- Floating selection toolbar -->
+            <!-- Notion-style Floating Selection Toolbar -->
             <div id="editor-toolbar" class="editor-floating-toolbar hidden">
-              <button type="button" class="float-btn" data-cmd="bold" title="Kalın"><b>B</b></button>
-              <button type="button" class="float-btn" data-cmd="italic" title="İtalik"><i>I</i></button>
-              <button type="button" class="float-btn" data-cmd="strike" title="Üstü Çizili"><s>S</s></button>
+              <div class="float-group">
+                <button type="button" class="float-btn" data-cmd="h1" title="Büyük Başlık (H1)">H1</button>
+                <button type="button" class="float-btn" data-cmd="h2" title="Orta Başlık (H2)">H2</button>
+              </div>
               <div class="float-divider"></div>
-              <button type="button" class="float-btn" data-cmd="h1">H1</button>
-              <button type="button" class="float-btn" data-cmd="h2">H2</button>
-              <button type="button" class="float-btn" data-cmd="inline-code">&lt;/&gt;</button>
+              <div class="float-group">
+                <button type="button" class="float-btn" data-cmd="bold" title="Kalın (Ctrl+B)"><b>B</b></button>
+                <button type="button" class="float-btn" data-cmd="italic" title="İtalik (Ctrl+I)"><i>I</i></button>
+                <button type="button" class="float-btn" data-cmd="strike" title="Üstü Çizili"><s>S</s></button>
+                <button type="button" class="float-btn" data-cmd="inline-code" title="Satır İçi Kod">&lt;/&gt;</button>
+              </div>
               <div class="float-divider"></div>
-              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#6c8ef0"><span class="color-dot" style="background:#6c8ef0"></span></button>
-              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#34d399"><span class="color-dot" style="background:#34d399"></span></button>
-              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#fbbf24"><span class="color-dot" style="background:#fbbf24"></span></button>
-              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#f87171"><span class="color-dot" style="background:#f87171"></span></button>
-              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#f472b6"><span class="color-dot" style="background:#f472b6"></span></button>
+              <div class="float-group">
+                <button type="button" class="float-btn float-block-btn" data-cmd="code-block" title="Seçimi Kod Bloğuna Dönüştür">
+                  <span class="float-icon">⚡</span> Kod
+                </button>
+                <button type="button" class="float-btn float-block-btn" data-cmd="terminal" title="Seçimi Terminal Komutuna Dönüştür">
+                  <span class="float-icon">$</span> Terminal
+                </button>
+                <button type="button" class="float-btn float-block-btn" data-cmd="quote" title="Alıntıya Dönüştür">
+                  <span class="float-icon">”</span> Alıntı
+                </button>
+                <button type="button" class="float-btn float-block-btn" data-cmd="info" title="İpucuna Dönüştür">
+                  <span class="float-icon">💡</span> İpucu
+                </button>
+              </div>
+              <div class="float-divider"></div>
+              <div class="float-group float-colors">
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#6c8ef0" title="İndigo"><span class="color-dot" style="background:#6c8ef0"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#34d399" title="Yeşil"><span class="color-dot" style="background:#34d399"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#fbbf24" title="Sarı"><span class="color-dot" style="background:#fbbf24"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#f87171" title="Kırmızı"><span class="color-dot" style="background:#f87171"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#f472b6" title="Pembe"><span class="color-dot" style="background:#f472b6"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#e9edef" title="Varsayılan"><span class="color-dot" style="background:#e9edef"></span></button>
+              </div>
             </div>
             <div id="notes-editor" class="rich-notes-area" contenteditable="true" spellcheck="true"></div>
             <textarea id="notes" class="hidden"></textarea>
