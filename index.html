@@ -13,31 +13,28 @@
   <nav class="nav-shell">
     <div class="nav-inner">
       <a class="brand" href="#"><img class="brand-logo" src="assets/notmonk-logo.png" alt=""><strong>NotMonk</strong></a>
-      <div class="nav-stats">
-        <span><b id="nav-total">0</b>KONU</span><span><b id="nav-active">0</b>AKTİF</span><span><b id="nav-done">0</b>ÖĞRENİLDİ</span>
-      </div><div class="nav-actions"><button id="expand-tab" class="icon-button expand-button" type="button" aria-label="Tam ekranda aç" title="Tam sekmede aç">⤢</button><button id="theme-toggle" class="theme-toggle" type="button" aria-label="Temayı değiştir"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-copy"><small>GÖRÜNÜM</small><b>Pembe tema</b></span></button><button id="open-form" class="primary add-topic-button"><span class="add-icon" aria-hidden="true">＋</span><span class="add-copy"><small>YENİ KAYIT</small><b>Konu ekle</b></span><kbd>N</kbd></button></div>
+      <div class="nav-tabs">
+        <button id="tab-all" class="nav-tab active" type="button">
+          <span>Tüm Konular</span>
+        </button>
+        <button id="tab-today" class="nav-tab" type="button">
+          <span>Bugün Çalışılacaklar</span>
+          <b id="today-count-badge" class="tab-badge">0</b>
+        </button>
+      </div>
+      <div class="nav-actions"><button id="expand-tab" class="icon-button expand-button" type="button" aria-label="Tam ekranda aç" title="Tam sekmede aç">⤢</button><button id="theme-toggle" class="theme-toggle" type="button" aria-label="Temayı değiştir"><span class="theme-icon" aria-hidden="true">◐</span><span class="theme-copy"><small>GÖRÜNÜM</small><b>Pembe tema</b></span></button><button id="open-form" class="primary add-topic-button"><span class="add-icon" aria-hidden="true">＋</span><span class="add-copy"><small>YENİ KAYIT</small><b>Konu ekle</b></span><kbd>N</kbd></button></div>
     </div>
   </nav>
   <main class="app-shell">
     <section class="dashboard-head">
       <div>
-        <span class="section-code">ÖĞRENME TABLOSU</span>
-        <h1>Konular</h1>
+        <span id="page-section-code" class="section-code">ÖĞRENME TABLOSU</span>
+        <h1 id="page-title">Konular</h1>
       </div><select id="sort-select" class="hidden" aria-hidden="true"><option value="updatedAt-desc">Elle sıralama</option></select>
     </section>
 
-    <section id="today-focus" class="today-focus hidden">
-      <div class="today-head">
-        <div class="today-head-title">
-          <span class="today-badge">🎯 BUGÜNÜN ODAĞI</span>
-          <span id="today-progress-badge" class="today-progress-badge">0/0 tamamlandı</span>
-        </div>
-        <button id="clear-today" class="today-clear-btn" type="button" title="Tüm odak konularını temizle">Temizle</button>
-      </div>
-      <div id="today-list" class="today-items"></div>
-    </section>
-
     <section class="workspace">
+
 
       <div class="control-bar">
         <label class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Konu veya not ara"></label><label class="control-select"><span>ALAN</span><select id="category-select">
@@ -67,11 +64,18 @@
         <h2>Tablon henüz boş</h2>
         <p>İlk konunu ekleyerek başla.</p><button id="empty-add" class="primary">İlk konuyu ekle</button>
       </section>
+      <section id="today-empty" class="empty hidden">
+        <span>⭐</span>
+        <h2>Bugün için seçili konu yok</h2>
+        <p>Tüm Konular sekmesindeki konuların yanındaki yıldıza (★) basarak buraya ekleyebilirsin.</p>
+        <button id="switch-to-all-btn" class="secondary" type="button">Tüm Konulara Git</button>
+      </section>
       <section id="no-results" class="empty hidden">
         <span>⌕</span>
         <h2>Sonuç bulunamadı</h2>
         <p>Aramanı veya filtrelerini değiştirmeyi dene.</p>
       </section>
+
       <section id="table-view" class="table-shell">
         <table>
           <thead>

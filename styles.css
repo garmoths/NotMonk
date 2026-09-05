@@ -69,25 +69,50 @@ body {
   object-fit: cover;
 }
 
-.nav-stats {
+.nav-tabs {
   display: flex;
-  gap: 36px;
-}
-
-.nav-stats span {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  color: var(--muted);
-  font: 700 10px monospace;
-  letter-spacing: 0.12em;
+  gap: 4px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  padding: 4px;
+  border-radius: 8px;
 }
 
-.nav-stats b {
-  color: var(--accent);
-  font: 700 14px/1.2 monospace;
-  margin-bottom: 2px;
+.nav-tab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 600 13px/1 Inter, system-ui, sans-serif;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
 }
+
+.nav-tab:hover {
+  color: var(--text);
+}
+
+.nav-tab.active {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.tab-badge {
+  font: 700 10px monospace;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
 
 .nav-actions {
   display: flex;
@@ -232,144 +257,7 @@ body {
   letter-spacing: -0.04em;
 }
 
-/* ── Today's Focus Card ─────────────────────────────────────────────────── */
-.today-focus {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel);
-  padding: 16px 20px;
-  margin-bottom: 24px;
-}
-
-.today-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--line);
-}
-
-.today-head-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.today-badge {
-  font: 700 11px monospace;
-  color: var(--accent);
-  letter-spacing: 0.1em;
-}
-
-.today-progress-badge {
-  font: 600 11px monospace;
-  color: var(--muted);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 2px 7px;
-}
-
-.today-clear-btn {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: 600 11px monospace;
-  cursor: pointer;
-  padding: 3px 8px;
-  border-radius: 4px;
-  transition: all 0.12s;
-}
-
-.today-clear-btn:hover {
-  color: var(--danger);
-  background: var(--danger-soft);
-}
-
-.today-items {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.today-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg);
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.today-item:hover {
-  border-color: var(--line2);
-  transform: translateY(-1px);
-}
-
-.today-item.today-done {
-  opacity: 0.65;
-  border-color: rgba(49, 212, 149, 0.3);
-}
-
-.today-item.today-done .today-item-title {
-  text-decoration: line-through;
-}
-
-.today-item-main {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex: 1;
-}
-
-.today-star-icon {
-  font-size: 14px;
-  line-height: 1;
-}
-
-.today-item-title {
-  font-weight: 600;
-  color: var(--text);
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.today-item-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.today-remove-btn {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1;
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.12s;
-}
-
-.today-remove-btn:hover {
-  color: var(--danger);
-  background: var(--danger-soft);
-}
-
-/* Star Button in Table */
+/* ── Star Button in Table ─────────────────────────────────────────────────── */
 .star-btn {
   border: 0;
   background: transparent;
@@ -381,6 +269,16 @@ body {
   cursor: pointer;
   transition: all 0.12s;
 }
+
+.star-btn:hover {
+  color: #ffc233;
+  transform: scale(1.15);
+}
+
+.star-btn.active {
+  color: #ffbe26;
+}
+
 
 .star-btn:hover {
   color: #ffc233;
