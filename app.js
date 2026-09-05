@@ -11,7 +11,8 @@ const state = {
   theme: "dark", page: 1, pageSize: 10, draggedId: null,
   activeTab: "modules", selectedCategory: null,
   notionToken: "", notionDbId: "", notionAutoSync: false,
-  notionConnected: false, notionDbTitle: ""
+  notionConnected: false, notionDbTitle: "",
+  umbrellaPageId: ""
 };
 
 const $ = s => document.querySelector(s);
@@ -76,19 +77,21 @@ const save = () => storageSet({
   topics: state.topics,
   categories: state.categories,
   categoryMetadata: state.categoryMetadata,
-  areaMapping: state.areaMapping
+  areaMapping: state.areaMapping,
+  umbrellaPageId: state.umbrellaPageId
 });
 const savePreferences = () => storageSet({ preferences: { category: state.category, status: state.status, sort: state.sort, theme: state.theme, roadmapVersion: ROADMAP_VERSION } });
-const saveNotionStorage = () => storageSet({ notionConfig: { token: state.notionToken, dbId: state.notionDbId, autoSync: state.notionAutoSync } });
+const saveNotionStorage = () => storageSet({ notionConfig: { token: state.notionToken, dbId: state.notionDbId, autoSync: state.notionAutoSync, umbrellaPageId: state.umbrellaPageId } });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  const saved = await storageGet(["topics", "preferences", "categories", "notionConfig", "categoryMetadata", "areaMapping"]);
+  const saved = await storageGet(["topics", "preferences", "categories", "notionConfig", "categoryMetadata", "areaMapping", "umbrellaPageId"]);
   const isDefaultDemoCategory = cat => typeof NOTMONK_CATEGORIES !== "undefined" && NOTMONK_CATEGORIES.includes(cat);
   const hasNotion = Boolean(saved.notionConfig?.token || (saved.areaMapping && Object.keys(saved.areaMapping).length > 0));
 
   state.categoryMetadata = saved.categoryMetadata || {};
   state.areaMapping = saved.areaMapping || {};
+  state.umbrellaPageId = saved.notionConfig?.umbrellaPageId || saved.umbrellaPageId || "";
 
   if (hasNotion) {
     // If Notion is configured or has areas, do NOT install the demo cybersecurity roadmap!
@@ -116,6 +119,9 @@ async function init() {
     state.notionToken = saved.notionConfig.token || "";
     state.notionDbId = saved.notionConfig.dbId || "";
     state.notionAutoSync = Boolean(saved.notionConfig.autoSync);
+    if (!state.umbrellaPageId) {
+      state.umbrellaPageId = saved.notionConfig.umbrellaPageId || "";
+    }
   }
 
   if (hasNotion || !saved.topics || !saved.categories) { await save(); await savePreferences(); }
@@ -128,6 +134,7 @@ async function init() {
   switchTab("modules");
   renderStats();
   checkNotionStatusBackground();
+  syncUnmappedCategoriesToNotion();
 }
 
 // ── Events ───────────────────────────────────────────────────────────────────
@@ -617,6 +624,60 @@ function openNewCategoryDialog() {
   if (input) setTimeout(() => input.focus(), 100);
 }
 
+async function ensureNotionArea(name, iconData = null) {
+  if (!state.notionToken || !name) return null;
+  if (state.areaMapping[name]?.id) return state.areaMapping[name];
+
+  try {
+    let parentForArea = state.umbrellaPageId || state.notionDbId;
+    if (!parentForArea) {
+      parentForArea = await NotionAPI.getOrFindUmbrellaPageId(state.notionToken, state.notionDbId);
+      if (parentForArea) {
+        state.umbrellaPageId = parentForArea;
+        await save();
+        await saveNotionStorage();
+      }
+    }
+    if (!parentForArea) return null;
+
+    const icon = iconData?.icon || "📁";
+    const newArea = await NotionAPI.createAreaPage(state.notionToken, parentForArea, name, icon);
+    if (newArea) {
+      state.areaMapping[name] = { id: newArea.id, type: "page" };
+      if (iconData?.iconType === "image" && iconData?.iconUrl) {
+        await NotionAPI.updatePageIcon(state.notionToken, newArea.id, iconData);
+      }
+      await save();
+      return newArea;
+    }
+  } catch (err) {
+    console.warn("Notion alan sayfası oluşturulamadı:", err);
+  }
+  return null;
+}
+
+async function syncUnmappedCategoriesToNotion() {
+  if (!state.notionToken) return;
+  let umbrellaId = state.umbrellaPageId;
+  if (!umbrellaId) {
+    umbrellaId = await NotionAPI.getOrFindUmbrellaPageId(state.notionToken, state.notionDbId);
+    if (umbrellaId) {
+      state.umbrellaPageId = umbrellaId;
+      await save();
+      await saveNotionStorage();
+    }
+  }
+  if (!umbrellaId) return;
+
+  for (const cat of state.categories) {
+    if (cat.toLowerCase().includes("notmonk") || cat.toLowerCase() === "test") continue;
+    if (!state.areaMapping[cat] || !state.areaMapping[cat].id) {
+      const meta = state.categoryMetadata?.[cat] || {};
+      await ensureNotionArea(cat, meta);
+    }
+  }
+}
+
 async function submitNewCategory() {
   const input = $("#modal-category-input");
   if (!input) return;
@@ -643,17 +704,9 @@ async function submitNewCategory() {
   renderEditorCategories();
   newCatDialog?.close();
 
-  // If Notion is connected, auto-create Area page in Notion
-  if (state.notionToken && (state.umbrellaPageId || state.notionDbId)) {
-    const parentForArea = state.umbrellaPageId || state.notionDbId;
-    NotionAPI.createAreaPage(state.notionToken, parentForArea, name, pendingNewCategoryAvatar.icon || "📁")
-      .then(newArea => {
-        if (newArea) {
-          state.areaMapping[name] = { id: newArea.id, type: "page" };
-          save();
-        }
-      })
-      .catch(err => console.warn("Notion alan sayfası oluşturulamadı:", err));
+  // If Notion is connected, auto-create Area page in Notion inside NotMonk
+  if (state.notionToken) {
+    await ensureNotionArea(name, pendingNewCategoryAvatar);
   }
 }
 
@@ -675,15 +728,9 @@ function renderCategoryManager() {
     row.querySelector(".category-name").textContent = category;
     row.querySelector(".category-usage").textContent = usage ? `${usage} konu` : "boş";
     const btn = row.querySelector("button");
-    if (usage > 0) {
-      btn.disabled = true;
-      btn.innerHTML = "🔒";
-      btn.title = "Bu alana ait konular olduğu için silinemez";
-    } else {
-      btn.innerHTML = "×";
-      btn.title = "Alanı sil";
-      btn.onclick = () => removeCategory(category);
-    }
+    btn.innerHTML = "×";
+    btn.title = usage > 0 ? `${category} alanını ve konularını sil` : "Alanı sil";
+    btn.onclick = () => removeCategory(category);
     return row;
   }));
 }
@@ -702,19 +749,28 @@ async function addCategory() {
   renderCategories();
   renderModules();
   markDirty();
+
+  if (state.notionToken) {
+    await ensureNotionArea(name);
+  }
 }
 
 async function removeCategory(category) {
   const usage = state.topics.filter(t => t.category === category).length;
-  if (usage > 0) return; // disabled buton zaten bunu engelliyor ama güvenlik için
+  const confirmMsg = usage > 0
+    ? `"${category}" alanı ve içindeki ${usage} konu NotMonk'tan silinecek. Emin misiniz?`
+    : `"${category}" alanı kaldırılacak.`;
   const accepted = await askConfirmation({
     title: "Alanı sil?",
-    message: `"${category}" alanı listeden kaldırılacak.`,
+    message: confirmMsg,
     accept: "Alanı sil",
     danger: true
   });
   if (!accepted) return;
   state.categories = state.categories.filter(c => c !== category);
+  state.topics = state.topics.filter(t => t.category !== category);
+  if (state.categoryMetadata) delete state.categoryMetadata[category];
+  if (state.areaMapping) delete state.areaMapping[category];
   await save();
   renderEditorCategories();
   renderCategories();
@@ -814,7 +870,7 @@ function renderModules() {
           </div>
           <div class="card-head-right">
             <span class="card-status-badge ${statusClass}">${statusText}</span>
-            ${total === 0 ? `<button class="card-delete-btn" type="button" title="Alanı Sil" aria-label="Alanı Sil">✕</button>` : ''}
+            <button class="card-delete-btn" type="button" title="Alanı Sil" aria-label="Alanı Sil">✕</button>
           </div>
         </div>
         <h2 class="card-title"></h2>
@@ -1155,7 +1211,10 @@ async function testNotionConnection() {
 
   try {
     // 1. Search accessible workspaces, pages and teamspaces
-    const discoveredAreas = await NotionAPI.searchWorkspaces(token);
+    const { areas: discoveredAreas, umbrellaId } = await NotionAPI.searchWorkspaces(token);
+    if (umbrellaId) {
+      state.umbrellaPageId = umbrellaId;
+    }
 
     if (discoveredAreas && discoveredAreas.length > 0) {
       discoveredAreas.forEach(area => {
@@ -1185,16 +1244,20 @@ async function testNotionConnection() {
         state.notionDbTitle = res.databaseTitle;
         state.notionDbId = res.databaseId;
         $("#notion-db-id").value = res.databaseId;
-        msgEl.textContent = `✓ Başarılı: "${res.databaseTitle}" bağlandı (${discoveredAreas.length} Teamspace / Alan keşfedildi).`;
+        msgEl.textContent = `✓ Başarılı: "${res.databaseTitle}" bağlandı (${discoveredAreas.length} Alan keşfedildi).`;
+      } else if (umbrellaId) {
+        state.notionDbTitle = "NotMonk";
+        msgEl.textContent = `✓ Başarılı: "NotMonk" ana sayfası bağlandı (${discoveredAreas.length} Alan bulundu).`;
       } else if (discoveredAreas.length > 0) {
-        state.notionDbTitle = `${discoveredAreas.length} Teamspace / Alan`;
-        msgEl.textContent = `✓ Başarılı: ${discoveredAreas.length} Notion Teamspace / Alan keşfedildi ve bağlandı.`;
+        state.notionDbTitle = `${discoveredAreas.length} Alan`;
+        msgEl.textContent = `✓ Başarılı: ${discoveredAreas.length} Notion Alanı keşfedildi ve bağlandı.`;
       } else {
         state.notionDbTitle = "Notion Bağlantısı";
-        msgEl.textContent = "✓ Bağlantı başarılı, ancak henüz NotMonk ile paylaşılmış Teamspace veya Sayfa bulunamadı. Notion'da Teamspace veya sayfanda ... > Connections > NotMonk seç.";
+        msgEl.textContent = "✓ Bağlantı başarılı, ancak henüz NotMonk ile paylaşılmış sayfa bulunamadı. Notion'da NotMonk sayfasında ... > Connections > NotMonk seçildiğinden emin olun.";
       }
       msgEl.className = "notion-status-msg success";
       updateNotionStatusUI();
+      syncUnmappedCategoriesToNotion();
     }
   } catch (err) {
     state.notionConnected = false;
@@ -1234,9 +1297,10 @@ async function checkNotionStatusBackground() {
       state.notionConnected = true;
       state.notionDbTitle = res.databaseTitle;
     } else {
-      const areas = await NotionAPI.searchWorkspaces(state.notionToken);
-      state.notionConnected = areas.length > 0;
-      state.notionDbTitle = `${areas.length} Teamspace / Alan`;
+      const { areas, umbrellaId } = await NotionAPI.searchWorkspaces(state.notionToken);
+      if (umbrellaId) state.umbrellaPageId = umbrellaId;
+      state.notionConnected = Boolean(umbrellaId || (areas && areas.length > 0));
+      state.notionDbTitle = umbrellaId ? "NotMonk" : `${areas.length} Alan`;
     }
   } catch (e) {
     state.notionConnected = false;
@@ -1256,6 +1320,10 @@ function updateNotionStatusUI() {
 async function syncTopicToNotion(topic) {
   if (!state.notionToken) return;
   try {
+    if (!state.umbrellaPageId && !state.notionDbId) {
+      state.umbrellaPageId = await NotionAPI.getOrFindUmbrellaPageId(state.notionToken);
+      if (state.umbrellaPageId) await save();
+    }
     const res = await NotionAPI.syncTopic(
       state.notionToken,
       state.notionDbId,
@@ -1353,6 +1421,20 @@ async function pullAllFromNotion() {
 
     if (umbrellaId) {
       state.umbrellaPageId = umbrellaId;
+      const validAreaTitles = new Set((areas || []).map(a => a.title.toLowerCase()));
+      // Purge any orphan/phantom categories (e.g. from root) that don't exist under NotMonk umbrella and have 0 topics
+      state.categories = state.categories.filter(cat => {
+        const hasTopics = state.topics.some(t => t.category === cat);
+        const existsInNotion = validAreaTitles.has(cat.toLowerCase());
+        return hasTopics || existsInNotion;
+      });
+      // Purge orphan area mappings
+      Object.keys(state.areaMapping).forEach(cat => {
+        if (!validAreaTitles.has(cat.toLowerCase()) && !state.topics.some(t => t.category === cat)) {
+          delete state.areaMapping[cat];
+          delete state.categoryMetadata[cat];
+        }
+      });
     }
     // Always purge any notmonk entry
     state.categories = state.categories.filter(c => !c.toLowerCase().includes("notmonk"));
