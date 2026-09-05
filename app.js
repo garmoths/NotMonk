@@ -567,7 +567,10 @@ function renderModules() {
           <div class="card-head-left">
             ${iconHtml}
           </div>
-          <span class="card-status-badge ${statusClass}">${statusText}</span>
+          <div class="card-head-right">
+            <span class="card-status-badge ${statusClass}">${statusText}</span>
+            ${total === 0 ? `<button class="card-delete-btn" type="button" title="Alanı Sil" aria-label="Alanı Sil">✕</button>` : ''}
+          </div>
         </div>
         <h2 class="card-title"></h2>
       </div>
@@ -583,6 +586,13 @@ function renderModules() {
     `;
 
     card.querySelector(".card-title").textContent = cat;
+    const delBtn = card.querySelector(".card-delete-btn");
+    if (delBtn) {
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        removeCategory(cat);
+      };
+    }
     container.append(card);
   });
 
@@ -998,7 +1008,8 @@ async function syncTopicToNotion(topic) {
       state.notionDbId,
       topic,
       {},
-      state.areaMapping
+      state.areaMapping,
+      state.umbrellaPageId || state.notionDbId
     );
     if (res) {
       topic.notionPageId = res.notionPageId;
@@ -1037,7 +1048,8 @@ async function pushAllToNotion() {
         state.notionDbId,
         topic,
         {},
-        state.areaMapping
+        state.areaMapping,
+        state.umbrellaPageId || state.notionDbId
       );
       if (res) {
         topic.notionPageId = res.notionPageId;
@@ -1077,7 +1089,7 @@ async function pullAllFromNotion() {
   progressText.textContent = "Notion Teamspace ve Konuları taranıyor...";
 
   try {
-    const { areas, topics } = await NotionAPI.fetchAllWorkspaceData(
+    const { areas, topics, umbrellaId } = await NotionAPI.fetchAllWorkspaceData(
       state.notionToken,
       state.notionDbId,
       msg => {
@@ -1085,6 +1097,13 @@ async function pullAllFromNotion() {
         progressBar.style.width = "60%";
       }
     );
+
+    if (umbrellaId) {
+      state.umbrellaPageId = umbrellaId;
+      state.categories = state.categories.filter(c => c.toLowerCase() !== "notmonk");
+      delete state.areaMapping["NotMonk"];
+      delete state.categoryMetadata["NotMonk"];
+    }
 
     const isDefaultDemoCategory = cat => typeof NOTMONK_CATEGORIES !== "undefined" && NOTMONK_CATEGORIES.includes(cat);
     state.categories = state.categories.filter(c => !isDefaultDemoCategory(c));
