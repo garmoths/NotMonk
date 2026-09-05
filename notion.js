@@ -165,17 +165,126 @@ const NotionAPI = {
 
   buildChildrenBlocks(notes) {
     if (!notes || !notes.trim()) return [];
-    const paragraphs = notes.split(/\n\n+/);
-    return paragraphs.map(p => ({
-      object: "block",
-      type: "paragraph",
-      paragraph: {
-        rich_text: [{
-          type: "text",
-          text: { content: p.slice(0, 2000) } // Notion block char limit is 2000
-        }]
+
+    // Plain text fallback
+    if (!/<[a-z][\s\S]*>/i.test(notes)) {
+      const paragraphs = notes.split(/\n\n+/).filter(Boolean);
+      return paragraphs.map(p => ({
+        object: "block",
+        type: "paragraph",
+        paragraph: {
+          rich_text: [{
+            type: "text",
+            text: { content: p.slice(0, 2000) }
+          }]
+        }
+      }));
+    }
+
+    // Rich HTML parser: generates native Notion blocks
+    const blocks = [];
+    const div = document.createElement("div");
+    div.innerHTML = notes;
+
+    div.childNodes.forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent.trim();
+        if (text) {
+          blocks.push({
+            object: "block",
+            type: "paragraph",
+            paragraph: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] }
+          });
+        }
+        return;
       }
-    }));
+
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = node.tagName.toLowerCase();
+
+      // Code block
+      if (node.classList.contains("code-block-wrap") || node.querySelector("pre.code-block")) {
+        const pre = node.querySelector("pre") || node;
+        const code = pre.querySelector("code") || pre;
+        const langSelect = node.querySelector(".code-lang-select");
+        const lang = langSelect ? langSelect.value : (code.className.match(/language-(\w+)/)?.[1] || "plain text");
+        const codeText = code.textContent || "";
+        if (codeText.trim()) {
+          const supported = ["javascript","python","bash","sql","c","go","html","css","json"];
+          const cleanLang = supported.includes(lang.toLowerCase()) ? lang.toLowerCase() : "plain text";
+          blocks.push({
+            object: "block",
+            type: "code",
+            code: {
+              rich_text: [{ type: "text", text: { content: codeText.slice(0, 2000) } }],
+              language: cleanLang
+            }
+          });
+        }
+        return;
+      }
+
+      // Terminal block
+      if (node.classList.contains("terminal-block-wrap") || node.querySelector("pre.terminal-block")) {
+        const pre = node.querySelector("pre") || node;
+        const code = pre.querySelector("code") || pre;
+        const codeText = code.textContent || "";
+        if (codeText.trim()) {
+          blocks.push({
+            object: "block",
+            type: "code",
+            code: {
+              rich_text: [{ type: "text", text: { content: codeText.slice(0, 2000) } }],
+              language: "bash"
+            }
+          });
+        }
+        return;
+      }
+
+      // Headings
+      if (tag === "h1") {
+        const text = node.textContent.trim();
+        if (text) blocks.push({ object: "block", type: "heading_1", heading_1: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        return;
+      }
+      if (tag === "h2") {
+        const text = node.textContent.trim();
+        if (text) blocks.push({ object: "block", type: "heading_2", heading_2: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        return;
+      }
+      if (tag === "h3") {
+        const text = node.textContent.trim();
+        if (text) blocks.push({ object: "block", type: "heading_3", heading_3: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        return;
+      }
+
+      // Quotes
+      if (tag === "blockquote" || node.classList.contains("rich-quote")) {
+        const text = node.textContent.trim();
+        if (text) blocks.push({ object: "block", type: "quote", quote: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        return;
+      }
+
+      // Callouts / Tips
+      if (node.classList.contains("info-block")) {
+        const text = node.textContent.trim();
+        if (text) blocks.push({ object: "block", type: "callout", callout: { icon: { emoji: "💡" }, rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] } });
+        return;
+      }
+
+      // General paragraph
+      const text = node.textContent.trim();
+      if (text) {
+        blocks.push({
+          object: "block",
+          type: "paragraph",
+          paragraph: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] }
+        });
+      }
+    });
+
+    return blocks.slice(0, 95);
   },
 
   async createPage(token, rawDatabaseId, topic, schemaProperties = {}) {

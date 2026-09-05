@@ -1,16 +1,18 @@
 :root {
   color-scheme: dark;
-  --bg: #080b10;
-  --panel: #0d1117;
-  --panel2: #141a22;
-  --line: #252e39;
-  --line2: #303946;
-  --text: #f3f7f9;
-  --muted: #87909d;
-  --accent: #00ed9f;
-  --accent-soft: rgba(0, 237, 159, 0.1);
-  --danger: #ff6572;
-  --danger-soft: rgba(255, 101, 114, 0.1);
+  --bg: #0a0d12;
+  --panel: #111620;
+  --panel2: #171e2c;
+  --line: #1e2840;
+  --line2: #2a3754;
+  --text: #e8edf5;
+  --muted: #6b7a95;
+  --accent: #6c8ef0;
+  --accent-soft: rgba(108, 142, 240, 0.12);
+  --success: #4ade80;
+  --success-soft: rgba(74, 222, 128, 0.12);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
 }
 
 * {
@@ -27,12 +29,12 @@ body {
 
 /* ── Navigation ───────────────────────────────────────────────────────────── */
 .nav-shell {
-  height: 80px;
+  height: 68px;
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
-  background: rgba(8, 11, 16, 0.95);
-  backdrop-filter: blur(8px);
+  background: rgba(10, 13, 18, 0.96);
+  backdrop-filter: blur(12px);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -117,7 +119,42 @@ body {
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+/* ── Unified Nav Icon Button ─────────────────────────────────────────────── */
+.nav-icon-btn {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid var(--line2);
+  border-radius: 9px;
+  background: var(--panel2);
+  color: var(--muted);
+  font: 500 13px Inter, system-ui, sans-serif;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.nav-icon-btn:hover {
+  background: var(--panel);
+  border-color: var(--line2);
+  color: var(--text);
+}
+
+.nav-icon-btn:only-child,
+.nav-icon-btn.expand-btn {
+  width: 38px;
+  padding: 0;
+  justify-content: center;
+}
+
+.nav-btn-label {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
@@ -129,45 +166,55 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font: inherit;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .primary {
   background: var(--accent);
-  color: #04110c;
-  font-weight: 700;
-  padding: 10px 18px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 0 16px;
+  height: 38px;
+  letter-spacing: -0.01em;
 }
 
 .primary:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.12);
   transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(108, 142, 240, 0.35);
 }
 
 .secondary {
   background: var(--panel2);
   color: var(--text);
-  border: 1px solid var(--line);
-  padding: 10px 16px;
+  border: 1px solid var(--line2);
+  padding: 0 14px;
+  height: 38px;
+  font-size: 13px;
 }
 
 .secondary:hover {
-  background: #1c2430;
-  border-color: #3d4a5c;
+  background: var(--panel);
+  border-color: var(--line2);
+  color: var(--text);
 }
 
 .danger {
   background: var(--danger-soft);
   color: var(--danger);
-  border: 1px solid rgba(255, 101, 114, 0.3);
-  padding: 10px 16px;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  padding: 0 14px;
+  height: 38px;
+  font-size: 13px;
 }
 
 .danger:hover {
-  background: rgba(255, 101, 114, 0.2);
+  background: rgba(248, 113, 113, 0.18);
 }
 
 .icon-button {
@@ -180,54 +227,73 @@ body {
   color: var(--text);
 }
 
+/* ── Nav Action Buttons ───────────────────────────────────────────────────── */
 .expand-button {
-  height: 42px;
-  width: 42px;
-  border: 1px solid var(--line);
+  height: 38px;
+  width: 38px;
+  border: 1px solid var(--line2);
   border-radius: 8px;
-  font-size: 18px;
-  background: var(--panel);
+  font-size: 16px;
+  background: var(--panel2);
+  color: var(--muted);
+  transition: all 0.18s ease;
 }
 
 .expand-button:hover {
   border-color: var(--line2);
+  background: var(--panel);
   color: var(--text);
 }
 
 .add-topic-button {
-  height: 42px;
+  height: 38px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 16px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.add-topic-button .add-icon {
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.9;
 }
 
 .add-copy {
   display: flex;
   flex-direction: column;
   text-align: left;
-  line-height: 1.1;
+  line-height: 1.15;
+  gap: 1px;
 }
 
 .add-copy small {
   font-size: 9px;
-  opacity: 0.8;
+  opacity: 0.65;
   font-family: monospace;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .add-copy b {
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .add-topic-button kbd {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 4px;
-  padding: 2px 5px;
+  padding: 2px 6px;
   font: 700 10px monospace;
-  margin-left: 4px;
+  margin-left: 2px;
+  letter-spacing: 0;
 }
+
 
 /* ── Dashboard Header & Progress ─────────────────────────────────────────── */
 .app-shell {
@@ -735,33 +801,42 @@ tr.drag-over {
   display: flex;
   align-items: center;
   gap: 7px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  color: var(--text);
-  font: 600 12px Inter, system-ui, sans-serif;
-  padding: 8px 12px;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  color: var(--muted);
+  font: 600 13px Inter, system-ui, sans-serif;
+  padding: 0 12px;
+  height: 38px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
 }
 
 .notion-toggle-btn:hover {
   border-color: var(--line2);
-  background: var(--panel2);
+  background: var(--panel);
+  color: var(--text);
 }
 
 .notion-icon {
   font-family: Georgia, serif;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 11px;
   background: var(--text);
   color: var(--bg);
-  width: 17px;
-  height: 17px;
-  border-radius: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
   display: grid;
   place-items: center;
   line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: opacity 0.18s ease;
+}
+
+.notion-toggle-btn:hover .notion-icon {
+  opacity: 1;
 }
 
 .notion-status-dot {
@@ -840,43 +915,43 @@ tr.drag-over {
 
 /* ── Notion Dialog ────────────────────────────────────────────────────────── */
 .notion-dialog {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--bg);
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  background: var(--panel);
   color: var(--text);
   padding: 0;
   width: min(560px, calc(100vw - 32px));
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(108, 142, 240, 0.06);
 }
 
 .notion-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(5, 8, 15, 0.75);
+  backdrop-filter: blur(6px);
 }
 
 .notion-modal-content {
   display: flex;
   flex-direction: column;
-  max-height: 85vh;
+  max-height: 88vh;
 }
 
 .notion-dialog .dialog-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
+  padding: 22px 24px 18px;
   border-bottom: 1px solid var(--line);
 }
 
 .notion-dialog-icon {
   font-family: Georgia, serif;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 16px;
   background: var(--text);
   color: var(--bg);
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
   line-height: 1;
@@ -890,126 +965,134 @@ tr.drag-over {
 }
 
 .dialog-title-wrap h2 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
-  margin-bottom: 2px;
+  margin: 0 0 2px;
+  letter-spacing: -0.01em;
 }
 
 .dialog-title-wrap p {
   font-size: 12px;
   color: var(--muted);
+  margin: 0;
 }
 
 .notion-dialog-body {
-  padding: 24px;
+  padding: 20px 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
 .notion-guide-card {
-  background: var(--panel);
+  background: var(--panel2);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 14px 18px;
+  padding: 14px 16px;
 }
 
 .guide-title {
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--accent);
   margin-bottom: 8px;
+  letter-spacing: 0.01em;
 }
 
 .guide-steps {
   margin: 0;
-  padding-left: 18px;
+  padding-left: 16px;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.65;
   color: var(--muted);
 }
 
+.guide-steps li { margin-bottom: 2px; }
+
 .guide-steps a {
   color: var(--accent);
-  text-decoration: underline;
+  text-decoration: none;
 }
+.guide-steps a:hover { text-decoration: underline; }
 
 .notion-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .notion-field-label {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font: 700 11px monospace;
+  font: 700 10px/1 monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
 .notion-field-label input {
   font: 500 13px Inter, system-ui, sans-serif;
   background: var(--panel2);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line2);
   color: var(--text);
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 11px 13px;
+  border-radius: 9px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .notion-field-label input:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(108, 142, 240, 0.15);
+}
+
+.notion-field-label input::placeholder {
+  color: var(--muted);
+  opacity: 0.5;
 }
 
 .notion-checkbox-row {
   display: flex;
   align-items: center;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .toggle-checkbox {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   font-size: 13px;
   color: var(--text);
   cursor: pointer;
 }
 
-.toggle-checkbox input {
-  cursor: pointer;
-}
+.toggle-checkbox input { cursor: pointer; }
 
 .notion-test-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 4px;
+  flex-wrap: wrap;
 }
 
 .notion-status-msg {
   font-size: 12px;
   font-weight: 600;
 }
-
-.notion-status-msg.success {
-  color: var(--success);
-}
-
-.notion-status-msg.error {
-  color: var(--danger);
-}
+.notion-status-msg.success { color: var(--success); }
+.notion-status-msg.error { color: var(--danger); }
 
 .notion-sync-section {
   border-top: 1px solid var(--line);
-  padding-top: 18px;
+  padding-top: 16px;
 }
 
 .sync-section-title {
-  font: 700 11px monospace;
+  font: 700 10px/1 monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--muted);
   margin-bottom: 12px;
 }
@@ -1017,7 +1100,7 @@ tr.drag-over {
 .sync-actions-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .sync-btn {
@@ -1026,30 +1109,42 @@ tr.drag-over {
   gap: 10px;
   padding: 12px 14px;
   text-align: left;
-  border-radius: 8px;
+  border-radius: 10px;
+  height: auto;
   cursor: pointer;
+  border: 1px solid var(--line2);
+  background: var(--panel2);
+  color: var(--text);
+  transition: all 0.18s ease;
+}
+
+.sync-btn:hover {
+  background: var(--panel);
+  border-color: var(--line2);
 }
 
 .sync-emoji {
   font-size: 18px;
   line-height: 1;
+  margin-top: 1px;
 }
 
 .sync-info b {
   display: block;
-  font-size: 13px;
-  margin-bottom: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 3px;
 }
 
 .sync-info small {
   display: block;
   font-size: 11px;
   color: var(--muted);
-  line-height: 1.3;
+  line-height: 1.4;
 }
 
 .sync-progress {
-  margin-top: 14px;
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1057,30 +1152,32 @@ tr.drag-over {
 
 .progress-bar-wrap {
   width: 100%;
-  height: 6px;
+  height: 4px;
   background: var(--panel2);
-  border-radius: 3px;
+  border-radius: 99px;
   overflow: hidden;
 }
 
 .sync-bar-fill {
   height: 100%;
   width: 0%;
-  background: var(--accent);
-  transition: width 0.15s ease;
+  background: linear-gradient(90deg, var(--accent), #8eb5ff);
+  transition: width 0.2s ease;
+  border-radius: 99px;
 }
 
 .sync-text {
-  font: 600 11px monospace;
+  font: 500 11px Inter, system-ui, sans-serif;
   color: var(--muted);
 }
 
 .notion-dialog .dialog-footer {
   display: flex;
   justify-content: flex-end;
-  padding: 16px 24px;
+  padding: 16px 24px 20px;
   border-top: 1px solid var(--line);
 }
+
 
 /* ── Hierarchical Module Cards & Drill-Down Navigation ─────────────────────── */
 .dashboard-title-wrap {
@@ -1092,22 +1189,22 @@ tr.drag-over {
 .back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: var(--panel2);
   border: 1px solid var(--line);
   color: var(--text);
   font: 600 13px Inter, system-ui, sans-serif;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.16s ease;
   flex-shrink: 0;
 }
 
 .back-btn:hover {
   background: var(--panel);
   border-color: var(--line2);
-  transform: translateX(-2px);
+  transform: translateX(-3px);
 }
 
 .back-arrow {
@@ -1119,37 +1216,68 @@ tr.drag-over {
   display: block;
 }
 
-.modules-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
-  margin-bottom: 24px;
+@keyframes cardFadeInUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+/* ── Module Card ──────────────────────────────────────────────────────────── */
 .module-card {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px 18px;
+  border-radius: 16px;
+  padding: 24px;
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease,
+              box-shadow 0.25s ease,
+              background 0.2s ease;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 145px;
+  position: relative;
+  min-height: 185px;
+  animation: cardFadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+.module-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
 }
 
 .module-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-5px);
   border-color: var(--line2);
   background: var(--panel2);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(108, 142, 240, 0.08);
+}
+
+.module-card:hover::before {
+  opacity: 1;
+}
+
+.module-card:active {
+  transform: translateY(-2px) scale(0.99);
 }
 
 .card-top {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .card-head {
@@ -1159,23 +1287,23 @@ tr.drag-over {
 }
 
 .card-index {
-  font: 700 10px monospace;
+  font: 700 10px/1 monospace;
   color: var(--accent);
   background: var(--accent-soft);
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.05em;
+  padding: 4px 9px;
+  border-radius: 6px;
+  letter-spacing: 0.1em;
 }
 
 .card-status-badge {
-  font: 700 10px monospace;
-  padding: 2px 7px;
-  border-radius: 4px;
-  letter-spacing: 0.04em;
+  font: 700 10px/1 monospace;
+  padding: 4px 9px;
+  border-radius: 6px;
+  letter-spacing: 0.06em;
 }
 
 .card-status-badge.status-todo {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
   border: 1px solid var(--line);
 }
@@ -1192,87 +1320,235 @@ tr.drag-over {
 
 .card-title {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
-  line-height: 1.35;
+  line-height: 1.4;
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .card-bottom {
-  margin-top: 14px;
+  margin-top: 20px;
 }
 
 .card-progress-bar {
   width: 100%;
-  height: 4px;
+  height: 3px;
   background: rgba(255, 255, 255, 0.06);
-  border-radius: 2px;
+  border-radius: 99px;
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .card-progress-fill {
   height: 100%;
-  border-radius: 2px;
-  background: var(--accent);
-  transition: width 0.25s ease;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), #8eb5ff);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .card-progress-fill.done {
-  background: var(--success);
+  background: linear-gradient(90deg, var(--success), #6ee7b7);
 }
 
 .card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font: 600 11px monospace;
+  font: 500 12px Inter, system-ui, sans-serif;
   color: var(--muted);
 }
 
 .card-count {
   color: var(--muted);
+  font-size: 12px;
 }
 
 .card-today-badge {
-  font: 700 10px monospace;
-  color: #ffbe26;
-  background: rgba(255, 190, 38, 0.12);
-  padding: 2px 6px;
-  border-radius: 4px;
+  font: 600 11px Inter, system-ui, sans-serif;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 3px 8px;
+  border-radius: 5px;
 }
 
 .card-arrow {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
-  transition: transform 0.15s, color 0.15s;
+  transition: transform 0.2s ease, color 0.2s ease;
+  line-height: 1;
 }
 
 .module-card:hover .card-arrow {
-  transform: translateX(3px);
-  color: var(--text);
+  transform: translateX(5px);
+  color: var(--accent);
 }
 
+/* ── Add Module Card ──────────────────────────────────────────────────────── */
 .add-module-card {
   background: transparent;
   border: 1px dashed var(--line2);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 12px;
   cursor: pointer;
   color: var(--muted);
-  min-height: 145px;
-  font: 600 12px Inter, system-ui, sans-serif;
-  transition: all 0.15s ease;
+  min-height: 185px;
+  font: 500 13px Inter, system-ui, sans-serif;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: cardFadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .add-module-card:hover {
   border-color: var(--accent);
   color: var(--text);
-  background: rgba(255, 255, 255, 0.02);
-  transform: translateY(-2px);
+  background: var(--accent-soft);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.add-module-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  color: var(--muted);
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.add-module-card:hover .add-module-circle {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  transform: rotate(90deg) scale(1.08);
+  box-shadow: 0 4px 16px rgba(108, 142, 240, 0.3);
+}
+
+/* ── New Category Modal ───────────────────────────────────────────────────── */
+.new-category-dialog {
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0;
+  width: min(460px, calc(100vw - 32px));
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(108, 142, 240, 0.08);
+}
+
+.new-category-dialog::backdrop {
+  background: rgba(5, 8, 15, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.new-category-dialog .dialog-header {
+  padding: 24px 24px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: none;
+}
+
+.new-category-dialog .dialog-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dialog-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(108, 142, 240, 0.3);
+}
+
+.new-category-dialog .dialog-header h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 3px;
+  color: var(--text);
+}
+
+.new-category-dialog .dialog-header p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.mini-dialog-body {
+  padding: 20px 24px 4px;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.modal-field span {
+  font: 700 10px/1 monospace;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.modal-field input {
+  font: 500 14px Inter, system-ui, sans-serif;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  color: var(--text);
+  padding: 13px 15px;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+
+.modal-field input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.modal-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(108, 142, 240, 0.15);
+}
+
+.new-category-dialog .dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 24px;
+  border-top: none;
+}
+
+.new-category-dialog .secondary {
+  background: transparent;
+  border: 1px solid var(--line2);
+  color: var(--muted);
+  font-size: 13px;
+  padding: 10px 16px;
+}
+
+.new-category-dialog .secondary:hover {
+  color: var(--text);
+  border-color: var(--line2);
+  background: var(--panel2);
 }

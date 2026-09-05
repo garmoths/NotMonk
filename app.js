@@ -18,6 +18,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const dialog = $("#topic-dialog");
 const notionDialog = $("#notion-dialog");
+const newCatDialog = $("#new-category-dialog");
 let isEditorDirty = false;
 
 // ── Storage ──────────────────────────────────────────────────────────────────
@@ -68,8 +69,10 @@ async function init() {
 
 // ── Events ───────────────────────────────────────────────────────────────────
 function bindEvents() {
-  $("#open-form").onclick = () => openForm();
-  $("#empty-add").onclick = () => openForm();
+  const openFormBtn = $("#open-form");
+  if (openFormBtn) openFormBtn.onclick = () => openForm();
+  const emptyAdd = $("#empty-add");
+  if (emptyAdd) emptyAdd.onclick = () => openForm();
   $("#tab-modules").onclick = () => switchTab("modules");
   $("#tab-today").onclick = () => switchTab("today");
   const backBtn = $("#back-to-modules");
@@ -78,6 +81,56 @@ function bindEvents() {
   if (switchToAllBtn) switchToAllBtn.onclick = () => goBackToModules();
   $("#topic-form").onsubmit = saveForm;
   $("#delete-topic").onclick = deleteCurrent;
+  
+  // Rich Editor Integration
+  if (typeof RichEditor !== "undefined") {
+    RichEditor.init();
+  }
+
+  const notesEditor = $("#notes-editor");
+  if (notesEditor) {
+    notesEditor.addEventListener("rich-change", () => {
+      const text = typeof RichEditor !== "undefined" ? RichEditor.getPlainText() : "";
+      $("#notes").value = typeof RichEditor !== "undefined" ? RichEditor.getHTML() : "";
+      $("#note-count").textContent = text.length;
+      markDirty();
+    });
+  }
+
+  const quickTools = $("#notes-quick-tools");
+  if (quickTools) {
+    quickTools.addEventListener("mousedown", e => {
+      const btn = e.target.closest("[data-cmd]");
+      if (!btn) return;
+      e.preventDefault();
+      if (typeof RichEditor !== "undefined") {
+        RichEditor.execCmd(btn.dataset.cmd, btn.dataset.val || null);
+      }
+    });
+  }
+
+  const colorTrigger = $("#color-trigger-btn");
+  const colorPopover = $("#color-palette-popover");
+  if (colorTrigger && colorPopover) {
+    colorTrigger.onclick = e => {
+      e.stopPropagation();
+      colorPopover.classList.toggle("hidden");
+    };
+    colorPopover.addEventListener("click", e => {
+      const swatch = e.target.closest("[data-cmd]");
+      if (!swatch) return;
+      if (typeof RichEditor !== "undefined") {
+        RichEditor.execCmd("color", swatch.dataset.val);
+      }
+      colorPopover.classList.add("hidden");
+    });
+    document.addEventListener("click", e => {
+      if (!colorPopover.contains(e.target) && e.target !== colorTrigger) {
+        colorPopover.classList.add("hidden");
+      }
+    });
+  }
+
   $("#notes").oninput = e => { $("#note-count").textContent = e.target.value.length; markDirty(); };
   ["#title", "#category", "#resource"].forEach(s => $(s).addEventListener("input", markDirty));
   $$('[data-sort]').forEach(b => b.onclick = () => toggleSort(b.dataset.sort));
@@ -196,15 +249,49 @@ function openForm(topic = null) {
   $("#edit-id").value = topic?.id || "";
   $("#dialog-title").textContent = topic ? "Konuyu düzenle" : "Yeni konu";
   $("#delete-topic").classList.toggle("hidden", !topic);
-  $("#category-manager").classList.remove("hidden", "open");
-  $("#toggle-category-manager").setAttribute("aria-expanded", "false");
-  renderEditorCategories(topic?.category);
+
+  // When inside a specific category, pre-select it and hide the category field entirely
+  const presetCategory = topic ? null : state.selectedCategory;
+  const hasPreset = Boolean(presetCategory);
+
+  const categoryField = $(".category-field");
+  const toggleCatManager = $("#toggle-category-manager");
+  const categoryManager = $("#category-manager");
+
+  if (hasPreset) {
+    // Auto-assign — hide the entire category section
+    if (categoryField) categoryField.classList.add("hidden");
+  } else {
+    if (categoryField) categoryField.classList.remove("hidden");
+    categoryManager.classList.remove("open");
+    toggleCatManager.setAttribute("aria-expanded", "false");
+  }
+
+  renderEditorCategories(presetCategory || topic?.category);
+
   if (topic) {
     $("#title").value = topic.title;
-    $("#notes").value = topic.notes || "";
+    const initialNotes = topic.notes || "";
+    $("#notes").value = initialNotes;
+    if (typeof RichEditor !== "undefined") {
+      RichEditor.setHTML(initialNotes);
+    }
     $("#resource").value = topic.resource || "";
+  } else if (hasPreset) {
+    // Ensure the category select value is set to selectedCategory
+    const catSelect = $("#category");
+    if (catSelect) catSelect.value = presetCategory;
+    $("#notes").value = "";
+    if (typeof RichEditor !== "undefined") {
+      RichEditor.setHTML("");
+    }
+  } else {
+    $("#notes").value = "";
+    if (typeof RichEditor !== "undefined") {
+      RichEditor.setHTML("");
+    }
   }
-  
+
   const notionLinkEl = $("#editor-notion-link");
   if (notionLinkEl) {
     if (topic?.notionUrl) {
@@ -217,8 +304,8 @@ function openForm(topic = null) {
 
   dialog.dataset.status = topic?.status || "todo";
   renderEditorStatus();
-  $("#notes").placeholder = "Notlarını buraya yaz…\n\n• Konuyu kendi cümlelerinle açıkla.\n• Önemli noktaları ve örnekleri ekle.\n• Anlamadığın yerleri not al.\n• Bir sonraki adımını belirle.";
-  $("#note-count").textContent = $("#notes").value.length;
+  const currentTextLen = typeof RichEditor !== "undefined" ? RichEditor.getPlainText().length : $("#notes").value.length;
+  $("#note-count").textContent = currentTextLen;
   isEditorDirty = false;
   dialog.showModal();
   $("#title").focus();
@@ -243,12 +330,14 @@ async function saveForm(e) {
   e.preventDefault();
   const id = $("#edit-id").value;
   const existing = id ? state.topics.find(t => t.id === id) : null;
+  const notesContent = typeof RichEditor !== "undefined" ? RichEditor.getHTML() : $("#notes").value.trim();
+  $("#notes").value = notesContent;
   const topic = {
     id: id || crypto.randomUUID(),
     title: $("#title").value.trim(),
     category: $("#category").value,
     status: dialog.dataset.status || "todo",
-    notes: $("#notes").value.trim(),
+    notes: notesContent,
     resource: $("#resource").value.trim(),
     today: existing ? existing.today : false,
     notionPageId: existing?.notionPageId || null,
@@ -287,14 +376,69 @@ async function requestEditorClose() {
 
 // ── Categories ────────────────────────────────────────────────────────────────
 function bindCategoryEvents() {
-  $("#toggle-category-manager").onclick = () => {
-    const manager = $("#category-manager"), open = manager.classList.toggle("open");
-    $("#toggle-category-manager").setAttribute("aria-expanded", String(open));
-    if (open) setTimeout(() => $("#new-category").focus(), 180);
-  };
-  $("#add-category").onclick = addCategory;
-  $("#new-category").oninput = e => e.target.setCustomValidity("");
-  $("#new-category").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } };
+  const toggleBtn = $("#toggle-category-manager");
+  if (toggleBtn) {
+    toggleBtn.onclick = () => {
+      const manager = $("#category-manager"), open = manager.classList.toggle("open");
+      toggleBtn.setAttribute("aria-expanded", String(open));
+      if (open) setTimeout(() => $("#new-category").focus(), 180);
+    };
+  }
+  const addCatBtn = $("#add-category");
+  if (addCatBtn) addCatBtn.onclick = addCategory;
+  const newCatInput = $("#new-category");
+  if (newCatInput) {
+    newCatInput.oninput = e => e.target.setCustomValidity("");
+    newCatInput.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } };
+  }
+
+  // Dedicated Mini Modal for New Module/Category
+  const closeNewCatBtn = $("#close-new-category-dialog");
+  if (closeNewCatBtn) closeNewCatBtn.onclick = () => newCatDialog?.close();
+  const cancelNewCatBtn = $("#cancel-new-category");
+  if (cancelNewCatBtn) cancelNewCatBtn.onclick = () => newCatDialog?.close();
+  const submitNewCatBtn = $("#submit-new-category");
+  if (submitNewCatBtn) submitNewCatBtn.onclick = submitNewCategory;
+  const modalCatInput = $("#modal-category-input");
+  if (modalCatInput) {
+    modalCatInput.oninput = e => e.target.setCustomValidity("");
+    modalCatInput.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); submitNewCategory(); } };
+  }
+}
+
+function openNewCategoryDialog() {
+  if (!newCatDialog) return;
+  const input = $("#modal-category-input");
+  if (input) {
+    input.value = "";
+    input.setCustomValidity("");
+  }
+  newCatDialog.showModal();
+  if (input) setTimeout(() => input.focus(), 100);
+}
+
+async function submitNewCategory() {
+  const input = $("#modal-category-input");
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) {
+    input.setCustomValidity("Lütfen bir alan adı girin.");
+    input.reportValidity();
+    return;
+  }
+  if (state.categories.some(c => c.toLocaleLowerCase("tr") === name.toLocaleLowerCase("tr"))) {
+    input.setCustomValidity("Bu çalışma alanı zaten mevcut.");
+    input.reportValidity();
+    return;
+  }
+  input.setCustomValidity("");
+  state.categories.push(name);
+  input.value = "";
+  await save();
+  renderCategories();
+  renderModules();
+  renderEditorCategories();
+  newCatDialog?.close();
 }
 
 function renderEditorCategories(selected) {
@@ -340,6 +484,7 @@ async function addCategory() {
   await save();
   renderEditorCategories(name);
   renderCategories();
+  renderModules();
   markDirty();
 }
 
@@ -357,6 +502,7 @@ async function removeCategory(category) {
   await save();
   renderEditorCategories();
   renderCategories();
+  renderModules();
   markDirty();
 }
 
@@ -418,6 +564,7 @@ function renderModules() {
 
     const card = document.createElement("div");
     card.className = "module-card";
+    card.style.setProperty("--i", idx);
     card.onclick = () => openCategory(cat);
 
     card.innerHTML = `
@@ -447,15 +594,10 @@ function renderModules() {
   const addCard = document.createElement("div");
   addCard.className = "add-module-card";
   addCard.innerHTML = `
-    <span class="add-icon">＋</span>
+    <span class="add-module-circle">＋</span>
     <span>Yeni Alan Ekle</span>
   `;
-  addCard.onclick = () => {
-    openForm();
-    $("#category-manager").classList.add("open");
-    $("#toggle-category-manager").setAttribute("aria-expanded", "true");
-    setTimeout(() => $("#new-category").focus(), 150);
-  };
+  addCard.onclick = () => openNewCategoryDialog();
   container.append(addCard);
 }
 
@@ -488,7 +630,8 @@ function syncControls() {
 
 function getVisible() {
   return state.topics.filter(t => {
-    const matchesQuery = !state.query || `${t.title} ${t.notes}`.toLocaleLowerCase("tr").includes(state.query);
+    const plainNotes = (t.notes || "").replace(/<[^>]*>/g, " ");
+    const matchesQuery = !state.query || `${t.title} ${plainNotes}`.toLocaleLowerCase("tr").includes(state.query);
     const matchesStatus = state.status === "all" || t.status === state.status;
     
     if (state.activeTab === "today") {
@@ -612,10 +755,10 @@ function createRow(topic, index) {
   tr.querySelector(".category-pill").textContent = topic.category;
   tr.children[4].append(statusButtons(topic));
 
-  const cleanNotes = (topic.notes || "").replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+  const plainNotes = (topic.notes || "").replace(/<[^>]*>/g, " ").replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
   const notesCell = tr.querySelector(".table-notes");
-  notesCell.textContent = cleanNotes || "—";
-  if (cleanNotes) notesCell.title = topic.notes;
+  notesCell.textContent = plainNotes || "—";
+  if (plainNotes) notesCell.title = plainNotes;
 
   tr.querySelector(".table-date").textContent = new Date(topic.updatedAt).toLocaleDateString("tr-TR");
   tr.onclick = () => openForm(topic);
@@ -675,9 +818,10 @@ function changePage(page) {
 // ── UI Helpers ────────────────────────────────────────────────────────────────
 function applyTheme() {
   document.body.dataset.theme = state.theme;
-  const button = $("#theme-toggle");
-  button.querySelector("b").textContent = state.theme === "pink" ? "Koyu tema" : "Pembe tema";
-  button.classList.toggle("active", state.theme === "pink");
+  const isPink = state.theme === "pink";
+  const labelEl = $("#theme-label");
+  if (labelEl) labelEl.textContent = isPink ? "Koyu tema" : "Pembe tema";
+  $("#theme-toggle").classList.toggle("active", isPink);
 }
 
 function askConfirmation({ title, message, accept, danger }) {

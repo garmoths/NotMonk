@@ -1,44 +1,54 @@
 /* ── Theme Toggle Button ─────────────────────────────────────────────────── */
 .theme-toggle {
-  height: 42px;
+  height: 38px;
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #0d1218;
-  color: #aeb6bf;
-  padding: 0 13px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--panel2);
+  color: var(--muted);
+  padding: 0 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
+  font-size: 13px;
 }
 
 .theme-toggle:hover {
-  border-color: #4a5562;
-  color: #fff;
+  border-color: var(--line2);
+  background: var(--panel);
+  color: var(--text);
 }
 
 .theme-icon {
-  font-size: 14px;
-  color: #ff5da9;
+  font-size: 13px;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.theme-toggle:hover .theme-icon {
+  opacity: 1;
 }
 
 .theme-copy {
   display: flex;
   flex-direction: column;
   text-align: left;
-  line-height: 1.1;
+  line-height: 1.15;
+  gap: 1px;
 }
 
 .theme-copy small {
   font-size: 9px;
   letter-spacing: 0.08em;
-  opacity: 0.7;
+  opacity: 0.55;
   font-family: monospace;
+  text-transform: uppercase;
 }
 
 .theme-copy b {
   font-size: 12px;
+  font-weight: 600;
 }
 
 /* ── Confirmation Modal ──────────────────────────────────────────────────── */
@@ -114,14 +124,18 @@ body[data-theme="pink"] {
   --text: #46152d;
   --muted: #8d526c;
   --accent: #d92f78;
+  --accent-soft: rgba(217, 47, 120, 0.12);
+  --success: #2d9e5f;
+  --success-soft: rgba(45, 158, 95, 0.14);
   --danger: #bd285d;
   background: linear-gradient(145deg, #ffd2e4 0%, #ffe8f1 48%, #f8bdd5 100%);
   color: var(--text);
 }
 
 body[data-theme="pink"] .nav-shell {
-  background: #f6b9d2;
+  background: rgba(255, 200, 225, 0.92);
   border-color: #d98fac;
+  backdrop-filter: blur(12px);
 }
 
 body[data-theme="pink"] .brand,
@@ -134,24 +148,46 @@ body[data-theme="pink"] .nav-stats b {
 }
 
 body[data-theme="pink"] .primary {
-  background: #c9286e;
-  color: #fff4f8;
+  background: #d92f78;
+  color: #fff;
   box-shadow: none;
 }
 
 body[data-theme="pink"] .primary:hover {
-  background: #b51f60;
+  background: #c2256a;
+  box-shadow: 0 4px 16px rgba(217, 47, 120, 0.3);
 }
 
-body[data-theme="pink"] .theme-toggle {
-  background: #ffe4ef;
-  border-color: #c87096;
+body[data-theme="pink"] .secondary {
+  background: #ffeaf2;
+  border-color: #d989aa;
   color: #6c2445;
 }
 
-body[data-theme="pink"] .theme-toggle span {
-  color: #b91f62;
+body[data-theme="pink"] .secondary:hover {
+  background: #ffd6e7;
+  color: #46152d;
+}
+
+body[data-theme="pink"] .nav-icon-btn {
+  background: #ffeaf2;
+  border-color: #d989aa;
+  color: #7a3556;
+}
+
+body[data-theme="pink"] .nav-icon-btn:hover {
+  background: #ffd6e7;
+  color: #46152d;
+}
+
+body[data-theme="pink"] .theme-icon {
+  color: #d92f78;
+  opacity: 1;
   text-shadow: none;
+}
+
+body[data-theme="pink"] .theme-toggle.active .theme-icon {
+  color: #8c194b;
 }
 
 body[data-theme="pink"] .section-code,
@@ -341,7 +377,7 @@ body[data-theme="pink"] .field-label-row {
 }
 
 body[data-theme="pink"] .notes-editor,
-body[data-theme="pink"] .notes-editor textarea {
+body[data-theme="pink"] .rich-notes-area {
   background: #f9cfe0;
   color: #4a1830;
 }
@@ -352,10 +388,84 @@ body[data-theme="pink"] .notes-toolbar {
   color: #73435b;
 }
 
+body[data-theme="pink"] .tool-btn {
+  background: #ffeaf2;
+  border-color: #d989aa;
+  color: #642a46;
+}
+
+body[data-theme="pink"] .tool-btn:hover {
+  background: #ffd6e7;
+  color: #d92f78;
+}
+
+body[data-theme="pink"] .color-palette-popover {
+  background: #ffe8f1;
+  border-color: #d989aa;
+}
+
+body[data-theme="pink"] .editor-floating-toolbar {
+  background: rgba(255, 232, 241, 0.96);
+  border-color: #d989aa;
+  box-shadow: 0 16px 40px rgba(100, 20, 50, 0.25);
+}
+
+body[data-theme="pink"] .float-btn {
+  color: #4a1830;
+}
+
+body[data-theme="pink"] .float-btn:hover {
+  background: #ffd6e7;
+  color: #d92f78;
+}
+
+body[data-theme="pink"] .code-block-wrap {
+  background: #2a0e1c;
+  border-color: #d989aa;
+}
+
+body[data-theme="pink"] .code-block-header {
+  background: #3d1428;
+  border-color: #551d38;
+}
+
+body[data-theme="pink"] pre.code-block {
+  background: #2a0e1c;
+  color: #fce7f3;
+}
+
+body[data-theme="pink"] .terminal-block-wrap {
+  background: #170810;
+  border-color: #d989aa;
+}
+
+body[data-theme="pink"] .terminal-header {
+  background: #2b0f1e;
+  border-color: #451730;
+}
+
+body[data-theme="pink"] pre.terminal-block {
+  background: #170810;
+  color: #f472b6;
+}
+
+body[data-theme="pink"] .rich-quote {
+  background: #ffd6e7;
+  border-left-color: #d92f78;
+  color: #642a46;
+}
+
+body[data-theme="pink"] .inline-code {
+  background: rgba(217, 47, 120, 0.12);
+  border-color: rgba(217, 47, 120, 0.25);
+  color: #a51654;
+}
+
 body[data-theme="pink"] .green-dot {
   background: #b62563;
   box-shadow: none;
 }
+
 
 body[data-theme="pink"] .sidebar-tip {
   border-color: #d493af;
@@ -458,17 +568,6 @@ body[data-theme="pink"] .star-btn.active {
 }
 
 
-body[data-theme="pink"] .notion-toggle-btn {
-  background: #f8c7da;
-  border-color: #d995b2;
-  color: #4a1329;
-}
-
-body[data-theme="pink"] .notion-toggle-btn:hover {
-  background: #ffdeeb;
-  border-color: #c86f94;
-}
-
 body[data-theme="pink"] .notion-icon,
 body[data-theme="pink"] .editor-notion-link span,
 body[data-theme="pink"] .notion-dialog-icon {
@@ -478,23 +577,38 @@ body[data-theme="pink"] .notion-dialog-icon {
 
 body[data-theme="pink"] .notion-dialog {
   background: #fde8f1;
-  border-color: #d995b2;
+  border-color: #d989aa;
   color: #4a1329;
 }
 
+body[data-theme="pink"] .notion-dialog .dialog-header {
+  border-color: #eba9c3;
+}
+
 body[data-theme="pink"] .notion-guide-card {
-  background: #f7cada;
-  border-color: #d995b2;
+  background: #ffc7dd;
+  border-color: #d989aa;
+}
+
+body[data-theme="pink"] .sync-btn {
+  background: #ffeaf2;
+  border-color: #d989aa;
+  color: #46152d;
+}
+
+body[data-theme="pink"] .sync-btn:hover {
+  background: #ffd6e7;
 }
 
 body[data-theme="pink"] .notion-field-label input {
   background: #ffeaf2;
-  border-color: #d995b2;
+  border-color: #d989aa;
   color: #4a1329;
 }
 
 body[data-theme="pink"] .notion-field-label input:focus {
-  border-color: #b51f60;
+  border-color: #d92f78;
+  box-shadow: 0 0 0 3px rgba(217, 47, 120, 0.15);
 }
 
 body[data-theme="pink"] .editor-notion-link {
@@ -597,11 +711,35 @@ body[data-theme="pink"] .add-module-card:hover {
   background: #ffeaf2;
 }
 
+body[data-theme="pink"] .add-module-circle {
+  background: #f8c7da;
+  border-color: #d995b2;
+  color: #b51f60;
+}
+
+body[data-theme="pink"] .add-module-card:hover .add-module-circle {
+  background: #f1b5ce;
+}
+
+body[data-theme="pink"] .new-category-dialog {
+  background: #fde8f1;
+  border-color: #d995b2;
+  color: #4a1329;
+}
+
+body[data-theme="pink"] .dialog-icon-badge {
+  background: #d92f78;
+  color: #fff;
+}
+
 @media (max-width: 650px) {
-  .theme-copy {
+  .theme-copy,
+  .add-copy,
+  .notion-label {
     display: none;
   }
-  .theme-toggle {
+  .theme-toggle,
+  .add-topic-button {
     padding: 0 10px;
   }
 }
