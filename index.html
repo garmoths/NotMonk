@@ -23,21 +23,16 @@
         </button>
       </div>
       <div class="nav-actions">
-        <button id="notion-toggle-btn" class="notion-toggle-btn" type="button" title="Notion Entegrasyonu">
+        <button id="notion-toggle-btn" class="nav-icon-btn" type="button" title="Notion Entegrasyonu">
           <span class="notion-icon">N</span>
-          <span class="notion-label">Notion</span>
+          <span class="nav-btn-label">Notion</span>
           <span id="notion-status-dot" class="notion-status-dot" title="Bağlantı bekleniyor"></span>
         </button>
-        <button id="expand-tab" class="icon-button expand-button" type="button" aria-label="Tam ekranda aç" title="Tam sekmede aç">⤢</button>
-        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Temayı değiştir">
+        <button id="theme-toggle" class="nav-icon-btn theme-toggle" type="button" aria-label="Temayı değiştir" title="Tema değiştir">
           <span class="theme-icon" aria-hidden="true">◐</span>
-          <span class="theme-copy"><small>GÖRÜNÜM</small><b>Pembe tema</b></span>
+          <span class="nav-btn-label" id="theme-label">Pembe tema</span>
         </button>
-        <button id="open-form" class="primary add-topic-button">
-          <span class="add-icon" aria-hidden="true">＋</span>
-          <span class="add-copy"><small>YENİ KAYIT</small><b>Konu ekle</b></span>
-          <kbd>N</kbd>
-        </button>
+        <button id="expand-tab" class="nav-icon-btn expand-btn" type="button" aria-label="Tam ekranda aç" title="Tam sekmede aç">⤢</button>
       </div>
     </div>
   </nav>
@@ -152,11 +147,66 @@
         </aside>
         <section class="notes-editor">
           <div class="notes-toolbar">
-            <div>
-              NOT DEFTERİ
-            </div><span><b id="note-count">0</b> karakter</span>
+            <div class="notes-toolbar-left">
+              <span class="notes-label">NOT DEFTERİ</span>
+              <div class="notes-quick-tools" id="notes-quick-tools">
+                <button type="button" class="tool-btn" data-cmd="h1" title="Büyük Başlık (H1)">H1</button>
+                <button type="button" class="tool-btn" data-cmd="h2" title="Orta Başlık (H2)">H2</button>
+                <button type="button" class="tool-btn" data-cmd="bold" title="Kalın (Ctrl+B)"><b>B</b></button>
+                <button type="button" class="tool-btn" data-cmd="italic" title="İtalik (Ctrl+I)"><i>I</i></button>
+                <button type="button" class="tool-btn" data-cmd="strike" title="Üstü Çizili"><s>S</s></button>
+                <button type="button" class="tool-btn" data-cmd="inline-code" title="Satır İçi Kod">&lt;/&gt;</button>
+                <div class="tool-divider"></div>
+                <button type="button" class="tool-btn tool-btn-action" data-cmd="code-block" title="Kod Bloğu Ekle">
+                  <span class="btn-icon">⚡</span> Kod Bloğu
+                </button>
+                <button type="button" class="tool-btn tool-btn-action" data-cmd="terminal" title="Terminal Komutu Ekle">
+                  <span class="btn-icon">$</span> Terminal
+                </button>
+                <button type="button" class="tool-btn tool-btn-action" data-cmd="info" title="İpucu / Not Ekle">
+                  <span class="btn-icon">💡</span> İpucu
+                </button>
+                <button type="button" class="tool-btn tool-btn-action" data-cmd="quote" title="Alıntı Ekle">
+                  <span class="btn-icon">”</span> Alıntı
+                </button>
+                <div class="tool-divider"></div>
+                <div class="color-dropdown-wrapper">
+                  <button type="button" class="tool-btn color-trigger" id="color-trigger-btn" title="Yazı Rengi">
+                    <span class="color-dot" style="background:var(--accent)"></span> Renk
+                  </button>
+                  <div class="color-palette-popover hidden" id="color-palette-popover">
+                    <button type="button" class="color-circle" data-cmd="color" data-val="#e9edef" style="background:#e9edef" title="Varsayılan"></button>
+                    <button type="button" class="color-circle" data-cmd="color" data-val="#6c8ef0" style="background:#6c8ef0" title="İndigo"></button>
+                    <button type="button" class="color-circle" data-cmd="color" data-val="#34d399" style="background:#34d399" title="Yeşil"></button>
+                    <button type="button" class="color-circle" data-cmd="color" data-val="#fbbf24" style="background:#fbbf24" title="Sarı"></button>
+                    <button type="button" class="color-circle" data-cmd="color" data-val="#f87171" style="background:#f87171" title="Kırmızı"></button>
+                    <button type="button" class="color-circle" data-cmd="color" data-val="#f472b6" style="background:#f472b6" title="Pembe"></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span><b id="note-count">0</b> karakter</span>
           </div>
-          <textarea id="notes" maxlength="50000" spellcheck="true" placeholder="Notlarını buraya yaz…\n\n• Konu neyi çözüyor?\n• Nasıl çalışıyor?\n• Kendi örneğin nedir?\n• Nerede takıldın?\n• Sonraki adımın ne?"></textarea>
+          <div class="editor-content-wrapper">
+            <!-- Floating selection toolbar -->
+            <div id="editor-toolbar" class="editor-floating-toolbar hidden">
+              <button type="button" class="float-btn" data-cmd="bold" title="Kalın"><b>B</b></button>
+              <button type="button" class="float-btn" data-cmd="italic" title="İtalik"><i>I</i></button>
+              <button type="button" class="float-btn" data-cmd="strike" title="Üstü Çizili"><s>S</s></button>
+              <div class="float-divider"></div>
+              <button type="button" class="float-btn" data-cmd="h1">H1</button>
+              <button type="button" class="float-btn" data-cmd="h2">H2</button>
+              <button type="button" class="float-btn" data-cmd="inline-code">&lt;/&gt;</button>
+              <div class="float-divider"></div>
+              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#6c8ef0"><span class="color-dot" style="background:#6c8ef0"></span></button>
+              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#34d399"><span class="color-dot" style="background:#34d399"></span></button>
+              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#fbbf24"><span class="color-dot" style="background:#fbbf24"></span></button>
+              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#f87171"><span class="color-dot" style="background:#f87171"></span></button>
+              <button type="button" class="float-btn float-color" data-cmd="color" data-val="#f472b6"><span class="color-dot" style="background:#f472b6"></span></button>
+            </div>
+            <div id="notes-editor" class="rich-notes-area" contenteditable="true" spellcheck="true"></div>
+            <textarea id="notes" class="hidden"></textarea>
+          </div>
         </section>
       </div>
       <footer class="editor-footer">
@@ -244,7 +294,34 @@
       </footer>
     </div>
   </dialog>
+  <dialog id="new-category-dialog" class="new-category-dialog">
+    <form id="new-category-form" onsubmit="return false;">
+      <header class="dialog-header">
+        <div class="dialog-title-wrap">
+          <span class="dialog-icon-badge">+</span>
+          <div>
+            <h2>Yeni Çalışma Alanı</h2>
+            <p>Yeni bir modül ekle, ardından konularını oluştur.</p>
+          </div>
+        </div>
+        <button id="close-new-category-dialog" class="icon-button" type="button" aria-label="Kapat">✕</button>
+      </header>
+      <div class="mini-dialog-body">
+        <label class="modal-field">
+          <span>Alan / Modül Adı</span>
+          <input id="modal-category-input" maxlength="60" placeholder="Örn: Mobil Uygulama Güvenliği" autocomplete="off">
+        </label>
+      </div>
+      <footer class="dialog-footer">
+        <button id="cancel-new-category" class="secondary" type="button">Vazgeç</button>
+        <button id="submit-new-category" class="primary" type="button">Oluştur →</button>
+      </footer>
+    </form>
+  </dialog>
   <dialog id="confirm-dialog" class="confirm-dialog"><div class="confirm-icon">!</div><h2 id="confirm-title">Emin misin?</h2><p id="confirm-message"></p><div class="confirm-actions"><button id="confirm-cancel" class="secondary" type="button">Geri dön</button><button id="confirm-accept" class="confirm-danger" type="button">Onayla</button></div></dialog>
+  <script src="prism.js"></script>
+  <script src="prism-langs.js"></script>
+  <script src="editor-rich.js"></script>
   <script src="notion.js"></script>
   <script src="roadmap.js"></script>
   <script src="app.js"></script>
