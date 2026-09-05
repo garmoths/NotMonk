@@ -9,7 +9,7 @@ const state = {
   topics: [], categories: [],
   category: "Tümü", status: "all", query: "", sort: "updatedAt-desc",
   theme: "dark", page: 1, pageSize: 10, draggedId: null,
-  activeTab: "all",
+  activeTab: "modules", selectedCategory: null,
   notionToken: "", notionDbId: "", notionAutoSync: false,
   notionConnected: false, notionDbTitle: ""
 };
@@ -67,10 +67,12 @@ async function init() {
 function bindEvents() {
   $("#open-form").onclick = () => openForm();
   $("#empty-add").onclick = () => openForm();
-  $("#tab-all").onclick = () => switchTab("all");
+  $("#tab-modules").onclick = () => switchTab("modules");
   $("#tab-today").onclick = () => switchTab("today");
+  const backBtn = $("#back-to-modules");
+  if (backBtn) backBtn.onclick = () => goBackToModules();
   const switchToAllBtn = $("#switch-to-all-btn");
-  if (switchToAllBtn) switchToAllBtn.onclick = () => switchTab("all");
+  if (switchToAllBtn) switchToAllBtn.onclick = () => goBackToModules();
   $("#topic-form").onsubmit = saveForm;
   $("#delete-topic").onclick = deleteCurrent;
   $("#notes").oninput = e => { $("#note-count").textContent = e.target.value.length; markDirty(); };
@@ -85,12 +87,64 @@ function bindEvents() {
 
 function switchTab(tab) {
   state.activeTab = tab;
-  $("#tab-all").classList.toggle("active", tab === "all");
+  $("#tab-modules").classList.toggle("active", tab === "modules");
   $("#tab-today").classList.toggle("active", tab === "today");
-  $("#page-section-code").textContent = tab === "today" ? "BUGÜNÜN ODAĞI" : "ÖĞRENME TABLOSU";
-  $("#page-title").textContent = tab === "today" ? "Bugün Çalışılacaklar" : "Konular";
+
+  if (tab === "today") {
+    state.selectedCategory = null;
+    $("#modules-view").classList.add("hidden");
+    $("#topics-view").classList.remove("hidden");
+    $("#back-to-modules").classList.add("hidden");
+    $("#page-section-code").textContent = "GÜNLÜK ODAK";
+    $("#page-title").textContent = "Bugün Çalışılacaklar";
+    state.page = 1;
+    renderTable();
+  } else {
+    if (state.selectedCategory) {
+      $("#modules-view").classList.add("hidden");
+      $("#topics-view").classList.remove("hidden");
+      $("#back-to-modules").classList.remove("hidden");
+      $("#page-section-code").textContent = "ALAN KONULARI";
+      $("#page-title").textContent = state.selectedCategory;
+      renderTable();
+    } else {
+      $("#modules-view").classList.remove("hidden");
+      $("#topics-view").classList.add("hidden");
+      $("#back-to-modules").classList.add("hidden");
+      $("#page-section-code").textContent = "MÜFREDAT & ALANLAR";
+      $("#page-title").textContent = "Çalışma Alanları";
+      renderModules();
+    }
+  }
+}
+
+function openCategory(categoryName) {
+  state.selectedCategory = categoryName;
+  state.activeTab = "modules";
   state.page = 1;
+  $("#tab-today").classList.remove("active");
+  $("#tab-modules").classList.add("active");
+  $("#modules-view").classList.add("hidden");
+  $("#topics-view").classList.remove("hidden");
+  $("#back-to-modules").classList.remove("hidden");
+  $("#page-section-code").textContent = "ALAN KONULARI";
+  $("#page-title").textContent = categoryName;
   renderTable();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function goBackToModules() {
+  state.selectedCategory = null;
+  state.activeTab = "modules";
+  $("#tab-today").classList.remove("active");
+  $("#tab-modules").classList.add("active");
+  $("#modules-view").classList.remove("hidden");
+  $("#topics-view").classList.add("hidden");
+  $("#back-to-modules").classList.add("hidden");
+  $("#page-section-code").textContent = "MÜFREDAT & ALANLAR";
+  $("#page-title").textContent = "Çalışma Alanları";
+  renderModules();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function bindListEnhancements() {
@@ -302,13 +356,87 @@ function render() {
   renderStats();
   renderCategories();
   syncControls();
-  renderTable();
+  if (state.activeTab === "modules" && !state.selectedCategory) {
+    renderModules();
+  } else {
+    renderTable();
+  }
 }
 
 function renderStats() {
   const todayCount = state.topics.filter(t => t.today).length;
   const badge = $("#today-count-badge");
   if (badge) badge.textContent = todayCount;
+}
+
+function renderModules() {
+  const container = $("#modules-grid");
+  if (!container) return;
+  container.replaceChildren();
+
+  state.categories.forEach((cat, idx) => {
+    const catTopics = state.topics.filter(t => t.category === cat);
+    const total = catTopics.length;
+    const done = catTopics.filter(t => t.status === "done").length;
+    const learning = catTopics.filter(t => t.status === "learning").length;
+    const todayCount = catTopics.filter(t => t.today).length;
+    const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    let statusText = "Başlanmadı";
+    let statusClass = "status-todo";
+    if (done === total && total > 0) {
+      statusText = "Tamamlandı";
+      statusClass = "status-done";
+    } else if (learning > 0 || done > 0) {
+      statusText = "Devam Ediyor";
+      statusClass = "status-learning";
+    }
+
+    const card = document.createElement("div");
+    card.className = "module-card";
+    card.onclick = () => openCategory(cat);
+
+    card.innerHTML = `
+      <div>
+        <div class="card-head">
+          <span class="card-index">${String(idx + 1).padStart(2, "0")}</span>
+          <span class="card-status-badge ${statusClass}">${statusText}</span>
+        </div>
+        <h2 class="card-title"></h2>
+      </div>
+      <div>
+        <div class="card-stats">
+          <span>${done}/${total} konu</span>
+          <span>%${percent}</span>
+        </div>
+        <div class="card-progress-bar">
+          <div class="card-progress-fill ${percent === 100 ? "done" : ""}" style="width: ${percent}%"></div>
+        </div>
+        <div class="card-footer">
+          <span class="card-pill">${total} konu</span>
+          ${todayCount > 0 ? `<span class="card-pill" title="Bugün çalışılacak">⭐ ${todayCount} odak</span>` : `<span class="card-pill">${learning > 0 ? `${learning} aktif` : "hazır"}</span>`}
+        </div>
+      </div>
+    `;
+
+    card.querySelector(".card-title").textContent = cat;
+    container.append(card);
+  });
+
+  // Append Add Module Card
+  const addCard = document.createElement("div");
+  addCard.className = "add-module-card";
+  addCard.innerHTML = `
+    <span class="add-module-icon">＋</span>
+    <span class="add-module-text">Yeni Alan / Modül Ekle</span>
+  `;
+  addCard.onclick = () => {
+    openForm();
+    $("#category-manager").classList.add("open");
+    $("#toggle-category-manager").setAttribute("aria-expanded", "true");
+    setTimeout(() => $("#new-category").focus(), 150);
+  };
+  container.append(addCard);
 }
 
 async function toggleToday(topic) {
@@ -322,6 +450,7 @@ async function toggleToday(topic) {
 
 function renderCategories() {
   const select = $("#category-select"), current = state.category;
+  if (!select) return;
   const cats = ["Tümü", ...state.categories];
   select.replaceChildren(...cats.map(c => new Option(c, c)));
   select.value = cats.includes(current) ? current : "Tümü";
@@ -329,18 +458,29 @@ function renderCategories() {
 }
 
 function syncControls() {
-  $("#category-select").value = state.category;
-  $("#status-filter").value = state.status;
-  $("#sort-select").value = state.sort;
+  const catSel = $("#category-select");
+  if (catSel) catSel.value = state.category;
+  const statusFil = $("#status-filter");
+  if (statusFil) statusFil.value = state.status;
+  const sortSel = $("#sort-select");
+  if (sortSel) sortSel.value = state.sort;
 }
 
 function getVisible() {
-  return state.topics.filter(t =>
-    (state.activeTab !== "today" || t.today) &&
-    (state.category === "Tümü" || t.category === state.category) &&
-    (state.status === "all" || t.status === state.status) &&
-    `${t.title} ${t.notes}`.toLocaleLowerCase("tr").includes(state.query)
-  );
+  return state.topics.filter(t => {
+    const matchesQuery = !state.query || `${t.title} ${t.notes}`.toLocaleLowerCase("tr").includes(state.query);
+    const matchesStatus = state.status === "all" || t.status === state.status;
+    
+    if (state.activeTab === "today") {
+      return t.today && matchesStatus && matchesQuery;
+    }
+    
+    if (state.selectedCategory) {
+      return t.category === state.selectedCategory && matchesStatus && matchesQuery;
+    }
+    
+    return matchesStatus && matchesQuery;
+  });
 }
 
 function toggleSort(key) {
@@ -354,13 +494,14 @@ function toggleSort(key) {
 function renderTable() {
   const isTodayTab = state.activeTab === "today";
   const todayTopicsTotal = state.topics.filter(t => t.today).length;
+  const currentCategoryTotal = state.selectedCategory ? state.topics.filter(t => t.category === state.selectedCategory).length : state.topics.length;
   const visible = getVisible();
   const totalPages = Math.max(1, Math.ceil(visible.length / state.pageSize));
   state.page = Math.min(state.page, totalPages);
   const start = (state.page - 1) * state.pageSize;
   const pageTopics = visible.slice(start, start + state.pageSize);
 
-  const isGlobalEmpty = !isTodayTab && state.topics.length === 0;
+  const isGlobalEmpty = !isTodayTab && currentCategoryTotal === 0;
   const isTodayEmpty = isTodayTab && todayTopicsTotal === 0;
   const isNoResults = !isGlobalEmpty && !isTodayEmpty && visible.length === 0;
 

@@ -14,8 +14,8 @@
     <div class="nav-inner">
       <a class="brand" href="#"><img class="brand-logo" src="assets/notmonk-logo.png" alt=""><strong>NotMonk</strong></a>
       <div class="nav-tabs">
-        <button id="tab-all" class="nav-tab active" type="button">
-          <span>Tüm Konular</span>
+        <button id="tab-modules" class="nav-tab active" type="button">
+          <span>Alanlar & Modüller</span>
         </button>
         <button id="tab-today" class="nav-tab" type="button">
           <span>Bugün Çalışılacaklar</span>
@@ -43,72 +43,75 @@
   </nav>
   <main class="app-shell">
     <section class="dashboard-head">
-      <div>
-        <span id="page-section-code" class="section-code">ÖĞRENME TABLOSU</span>
-        <h1 id="page-title">Konular</h1>
-      </div><select id="sort-select" class="hidden" aria-hidden="true"><option value="updatedAt-desc">Elle sıralama</option></select>
+      <div class="dashboard-title-wrap">
+        <button id="back-to-modules" class="back-btn hidden" type="button" title="Alanlara Geri Dön">
+          <span class="back-arrow">←</span>
+          <span>Tüm Alanlar</span>
+        </button>
+        <div>
+          <span id="page-section-code" class="section-code">MÜFREDAT & ALANLAR</span>
+          <h1 id="page-title">Çalışma Alanları</h1>
+        </div>
+      </div>
+      <select id="sort-select" class="hidden" aria-hidden="true"><option value="updatedAt-desc">Elle sıralama</option></select>
     </section>
 
     <section class="workspace">
-
-
-      <div class="control-bar">
-        <label class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Konu veya not ara"></label><label class="control-select"><span>ALAN</span><select id="category-select">
-          <option value="Tümü">
-            Tümü
-          </option>
-        </select></label><label class="control-select"><span>DURUM</span><select id="status-filter">
-          <option value="all">
-            Tümü
-          </option>
-          <option value="todo">
-            Başlamadım
-          </option>
-          <option value="learning">
-            Öğreniyorum
-          </option>
-          <option value="done">
-            Öğrendim
-          </option>
-        </select></label>
-      </div>
-      <div class="result-line">
-        <span><b id="result-count">0</b> konu gösteriliyor</span><button id="clear-filters">Filtreleri temizle</button>
-      </div>
-      <section id="empty-state" class="empty hidden">
-        <span>＋</span>
-        <h2>Tablon henüz boş</h2>
-        <p>İlk konunu ekleyerek başla.</p><button id="empty-add" class="primary">İlk konuyu ekle</button>
-      </section>
-      <section id="today-empty" class="empty hidden">
-        <span>⭐</span>
-        <h2>Bugün için seçili konu yok</h2>
-        <p>Tüm Konular sekmesindeki konuların yanındaki yıldıza (★) basarak buraya ekleyebilirsin.</p>
-        <button id="switch-to-all-btn" class="secondary" type="button">Tüm Konulara Git</button>
-      </section>
-      <section id="no-results" class="empty hidden">
-        <span>⌕</span>
-        <h2>Sonuç bulunamadı</h2>
-        <p>Aramanı veya filtrelerini değiştirmeyi dene.</p>
+      <!-- 1. Seviye: Alan / Modül Kartları Izgarası -->
+      <section id="modules-view" class="modules-view">
+        <div id="modules-grid" class="modules-grid"></div>
       </section>
 
-      <section id="table-view" class="table-shell">
-        <table>
-          <thead>
-            <tr>
-              <th class="drag-head"></th>
-              <th class="number-head">#</th>
-              <th>KONU</th>
-              <th>ALAN</th>
-              <th class="status-head">DURUM</th>
-              <th>NOT</th>
-              <th>GÜNCELLEME</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="topic-table-body"></tbody>
-        </table>
-      </section><nav id="pagination" class="pagination" aria-label="Konu sayfaları"></nav>
+      <!-- 2. Seviye: Seçilen Modülün veya Bugünün Konuları -->
+      <section id="topics-view" class="topics-view hidden">
+        <div class="control-bar">
+          <label class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Konu veya not ara"></label>
+          <label class="control-select"><span>DURUM</span><select id="status-filter">
+            <option value="all">Tümü</option>
+            <option value="todo">Başlamadım</option>
+            <option value="learning">Öğreniyorum</option>
+            <option value="done">Öğrendim</option>
+          </select></label>
+        </div>
+        <div class="result-line">
+          <span><b id="result-count">0</b> konu gösteriliyor</span><button id="clear-filters">Filtreleri temizle</button>
+        </div>
+        <section id="empty-state" class="empty hidden">
+          <span>＋</span>
+          <h2>Bu alanda henüz konu yok</h2>
+          <p>İlk konunu ekleyerek başla.</p><button id="empty-add" class="primary">İlk konuyu ekle</button>
+        </section>
+        <section id="today-empty" class="empty hidden">
+          <span>⭐</span>
+          <h2>Bugün için seçili konu yok</h2>
+          <p>Modüllerdeki konuların yanındaki yıldıza (★) basarak buraya ekleyebilirsin.</p>
+          <button id="switch-to-all-btn" class="secondary" type="button">Alanlara Git</button>
+        </section>
+        <section id="no-results" class="empty hidden">
+          <span>⌕</span>
+          <h2>Sonuç bulunamadı</h2>
+          <p>Aramanı veya filtrelerini değiştirmeyi dene.</p>
+        </section>
+
+        <section id="table-view" class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th class="drag-head"></th>
+                <th class="number-head">#</th>
+                <th>KONU</th>
+                <th>ALAN</th>
+                <th class="status-head">DURUM</th>
+                <th>NOT</th>
+                <th>GÜNCELLEME</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="topic-table-body"></tbody>
+          </table>
+        </section>
+        <nav id="pagination" class="pagination" aria-label="Konu sayfaları"></nav>
+      </section>
     </section>
   </main>
   <dialog id="topic-dialog" class="topic-page">
