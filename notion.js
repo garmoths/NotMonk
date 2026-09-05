@@ -558,13 +558,13 @@ const NotionAPI = {
 
     if (!umbrellaId) {
       // 1. Detect Umbrella Container Page
-      // Look for a page whose title is "NotMonk" or contains "NotMonk" (case-insensitive)
+      // Look for a page whose title contains "notmonk" (case-insensitive)
       for (const item of allResults) {
         if (item.object === "page") {
           const title = (this.extractTitle(item) || "").trim().toLowerCase();
           const parentPageId = item.parent?.page_id ? item.parent.page_id.replace(/-/g, "") : null;
           const isRoot = !parentPageId || !allIds.has(parentPageId);
-          if (isRoot && (title === "notmonk" || title.startsWith("notmonk ") || title.endsWith(" notmonk") || title.includes("notmonk workspace"))) {
+          if (isRoot && title.includes("notmonk")) {
             umbrellaItem = item;
             umbrellaId = item.id.replace(/-/g, "");
             break;
@@ -579,13 +579,15 @@ const NotionAPI = {
     // 2. Classify Areas
     for (const item of allResults) {
       const cleanId = item.id.replace(/-/g, "");
-      if (umbrellaId && cleanId === umbrellaId) {
-        // The umbrella container itself is not an area card
-        continue;
-      }
-
       const title = this.extractTitle(item);
       if (!title || !title.trim()) continue;
+
+      const cleanTitle = title.trim().toLowerCase();
+      if ((umbrellaId && cleanId === umbrellaId) || cleanTitle.includes("notmonk")) {
+        // The umbrella container itself must NEVER be an area card!
+        if (!umbrellaId) umbrellaId = cleanId;
+        continue;
+      }
 
       const { icon, iconType, iconUrl } = this.extractIcon(item);
       const isDatabase = item.object === "database";
