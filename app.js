@@ -1,14 +1,9 @@
 const STATUS = { todo: "Başlamadım", learning: "Öğreniyorum", done: "Öğrendim" };
 const STATUS_ORDER = { todo: 0, learning: 1, done: 2 };
 
-const starterTopics = [
-  { title: "JavaScript temellerini sağlamlaştır", category: "JavaScript", status: "learning", notes: "Fonksiyonlar, array/object, scope ve hata yönetimi.", resource: "" },
-  { title: "HTTP istek ve cevaplarını anla", category: "Backend", status: "todo", notes: "Method, header, body ve status code kavramlarını incele.", resource: "" },
-  { title: "IP, port, DNS ve TCP temelleri", category: "Ağ", status: "todo", notes: "Bir adresi açarken ağda gerçekleşen adımları açıklayabil.", resource: "" },
-  { title: "Cookie, session ve yetkilendirme", category: "Web Güvenliği", status: "todo", notes: "Authentication ile authorization farkını öğren.", resource: "" }
-].map((t, i) => ({ ...t, id: crypto.randomUUID(), updatedAt: Date.now() - i * 1000 }));
-
-const DEFAULT_CATEGORIES = ["JavaScript", "Backend", "Ağ", "Web Güvenliği", "CTI / SOC", "Diğer"];
+const ROADMAP_VERSION = 1;
+const starterTopics = NOTMONK_ROADMAP.map((topic, index) => ({ ...topic, id: crypto.randomUUID(), status: "todo", updatedAt: Date.now() - index * 1000 }));
+const DEFAULT_CATEGORIES = [...NOTMONK_CATEGORIES];
 
 const state = {
   topics: [], categories: [],
@@ -34,17 +29,18 @@ const storageSet = value => new Promise(resolve => {
   resolve();
 });
 const save = () => storageSet({ topics: state.topics, categories: state.categories });
-const savePreferences = () => storageSet({ preferences: { category: state.category, status: state.status, sort: state.sort, theme: state.theme } });
+const savePreferences = () => storageSet({ preferences: { category: state.category, status: state.status, sort: state.sort, theme: state.theme, roadmapVersion: ROADMAP_VERSION } });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   const saved = await storageGet(["topics", "preferences", "categories"]);
-  state.topics = (Array.isArray(saved.topics) ? saved.topics : starterTopics)
+  const installRoadmap = saved.preferences?.roadmapVersion !== ROADMAP_VERSION;
+  state.topics = (installRoadmap ? starterTopics : (Array.isArray(saved.topics) ? saved.topics : starterTopics))
     .map(t => ({ ...t, status: ["practiced", "mastered"].includes(t.status) ? "done" : t.status }));
-  state.categories = Array.isArray(saved.categories) ? saved.categories : [...DEFAULT_CATEGORIES];
+  state.categories = installRoadmap ? [...DEFAULT_CATEGORIES] : (Array.isArray(saved.categories) ? saved.categories : [...DEFAULT_CATEGORIES]);
   state.topics.forEach(t => { if (!state.categories.includes(t.category)) state.categories.push(t.category); });
   Object.assign(state, saved.preferences || {});
-  if (!saved.topics || !saved.categories) await save();
+  if (installRoadmap || !saved.topics || !saved.categories) { await save(); await savePreferences(); }
   bindEvents();
   bindCategoryEvents();
   bindEnhancements();
@@ -84,6 +80,10 @@ function bindListEnhancements() {
 function bindEnhancements() {
   $("#close-dialog").onclick = requestEditorClose;
   $("#cancel-dialog").onclick = requestEditorClose;
+  dialog.oncancel = e => {
+    e.preventDefault();
+    requestEditorClose();
+  };
   $("#theme-toggle").onclick = () => { state.theme = state.theme === "pink" ? "dark" : "pink"; applyTheme(); savePreferences(); };
   const expandBtn = $("#expand-tab");
   if (expandBtn) {
@@ -98,6 +98,7 @@ function bindEnhancements() {
     }
   }
 }
+
 
 // ── Editor ───────────────────────────────────────────────────────────────────
 function openForm(topic = null) {
@@ -335,10 +336,34 @@ function createRow(topic, index) {
   tr.draggable = true;
   tr.innerHTML = `<td class="drag-cell"><button class="drag-handle" type="button" aria-label="${topic.title} konusunu taşı">⠿</button></td><td class="row-number"></td><td class="table-title"></td><td><span class="category-pill"></span></td><td></td><td class="table-notes"></td><td class="table-date"></td><td><button class="row-action">Düzenle</button></td>`;
   tr.children[1].textContent = String(index + 1).padStart(2, "0");
-  tr.children[2].textContent = topic.title;
+
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "title-wrap";
+  const titleSpan = document.createElement("span");
+  titleSpan.textContent = topic.title;
+  titleWrap.append(titleSpan);
+
+  if (topic.resource) {
+    const link = document.createElement("a");
+    link.href = topic.resource;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.className = "resource-icon-link";
+    link.title = `Kaynağı aç: ${topic.resource}`;
+    link.textContent = "🔗";
+    link.onclick = e => e.stopPropagation();
+    titleWrap.append(link);
+  }
+  tr.children[2].replaceChildren(titleWrap);
+
   tr.querySelector(".category-pill").textContent = topic.category;
   tr.children[4].append(statusButtons(topic));
-  tr.querySelector(".table-notes").textContent = topic.notes || "—";
+
+  const cleanNotes = (topic.notes || "").replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
+  const notesCell = tr.querySelector(".table-notes");
+  notesCell.textContent = cleanNotes || "—";
+  if (cleanNotes) notesCell.title = topic.notes;
+
   tr.querySelector(".table-date").textContent = new Date(topic.updatedAt).toLocaleDateString("tr-TR");
   tr.onclick = () => openForm(topic);
   tr.querySelector(".row-action").onclick = e => { e.stopPropagation(); openForm(topic); };
@@ -350,6 +375,7 @@ function createRow(topic, index) {
   tr.ondrop = e => { e.preventDefault(); e.stopPropagation(); tr.classList.remove("drag-over"); moveTopic(state.draggedId, topic.id); };
   return tr;
 }
+
 
 async function moveTopic(sourceId, targetId) {
   if (!sourceId || sourceId === targetId) return;
