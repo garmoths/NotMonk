@@ -583,7 +583,9 @@ async function testNotionConnection() {
     const res = await NotionAPI.testConnection(token, dbId);
     state.notionConnected = true;
     state.notionDbTitle = res.databaseTitle;
-    msgEl.textContent = `✓ Başarılı: "${res.databaseTitle}" bulundu.`;
+    state.notionDbId = res.databaseId;
+    $("#notion-db-id").value = res.databaseId;
+    msgEl.textContent = `✓ Başarılı: "${res.databaseTitle}" bağlandı.`;
     msgEl.className = "notion-status-msg success";
     updateNotionStatusUI();
   } catch (err) {
