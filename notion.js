@@ -517,6 +517,52 @@ const NotionAPI = {
     }
   },
 
+  async getOrFindUmbrellaPageId(token, explicitId = null) {
+    if (!token) return null;
+    if (explicitId) {
+      return this.cleanDatabaseId(explicitId);
+    }
+    try {
+      // 1. First targeted search for "notmonk"
+      const res = await fetch(`${NOTION_BASE_URL}/search`, {
+        method: "POST",
+        headers: this.getHeaders(token),
+        body: JSON.stringify({
+          query: "notmonk",
+          page_size: 20
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        for (const item of (data.results || [])) {
+          const title = (this.extractTitle(item) || "").trim().toLowerCase();
+          if (title.includes("notmonk")) {
+            return item.id.replace(/-/g, "");
+          }
+        }
+      }
+
+      // 2. Fallback broader search
+      const genRes = await fetch(`${NOTION_BASE_URL}/search`, {
+        method: "POST",
+        headers: this.getHeaders(token),
+        body: JSON.stringify({ page_size: 50 })
+      });
+      if (genRes.ok) {
+        const data = await genRes.json();
+        for (const item of (data.results || [])) {
+          const title = (this.extractTitle(item) || "").trim().toLowerCase();
+          if (title.includes("notmonk")) {
+            return item.id.replace(/-/g, "");
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Umbrella page arama hatası:", e);
+    }
+    return null;
+  },
+
   // Search workspace for shared Teamspaces, parent pages and databases with pagination
   async searchWorkspaces(token) {
     if (!token) throw new Error("Notion API Token eksik.");
@@ -545,8 +591,8 @@ const NotionAPI = {
       nextCursor = data.next_cursor;
     }
 
-    const { areas } = this.classifyWorkspaceHierarchy(allResults);
-    return areas;
+    const { areas, umbrellaId } = this.classifyWorkspaceHierarchy(allResults);
+    return { areas, umbrellaId };
   },
 
   classifyWorkspaceHierarchy(allResults, explicitParentId = null) {
@@ -558,17 +604,13 @@ const NotionAPI = {
 
     if (!umbrellaId) {
       // 1. Detect Umbrella Container Page
-      // Look for a page whose title contains "notmonk" (case-insensitive)
+      // Look for a page or database whose title contains "notmonk" (case-insensitive)
       for (const item of allResults) {
-        if (item.object === "page") {
-          const title = (this.extractTitle(item) || "").trim().toLowerCase();
-          const parentPageId = item.parent?.page_id ? item.parent.page_id.replace(/-/g, "") : null;
-          const isRoot = !parentPageId || !allIds.has(parentPageId);
-          if (isRoot && title.includes("notmonk")) {
-            umbrellaItem = item;
-            umbrellaId = item.id.replace(/-/g, "");
-            break;
-          }
+        const title = (this.extractTitle(item) || "").trim().toLowerCase();
+        if (title.includes("notmonk")) {
+          umbrellaItem = item;
+          umbrellaId = item.id.replace(/-/g, "");
+          break;
         }
       }
     }
@@ -597,12 +639,11 @@ const NotionAPI = {
       const isDirectUmbrellaChild = Boolean(umbrellaId && parentPageId === umbrellaId);
 
       // An item is an Area (Alan) if:
-      // A. It is a direct child of the NotMonk umbrella page, OR
-      // B. There is no umbrella page, and it is a root page / workspace item / database, OR
-      // C. There is an umbrella page, but this is a separate standalone root page / database
-      const isArea = isDirectUmbrellaChild ||
-        (!umbrellaId && (isDatabase || isWorkspaceParent || isRootPage)) ||
-        (umbrellaId && isRootPage && cleanId !== umbrellaId);
+      // A. An umbrella page (NotMonk) exists: ONLY direct children of NotMonk are Areas.
+      // B. NO umbrella page exists: root pages / workspace items / databases are Areas (legacy fallback).
+      const isArea = umbrellaId
+        ? Boolean(isDirectUmbrellaChild)
+        : Boolean(isDatabase || isWorkspaceParent || isRootPage);
 
       if (isArea) {
         const areaObj = {
@@ -628,7 +669,14 @@ const NotionAPI = {
     for (const item of candidateTopics) {
       if (item.object === "page") {
         const title = this.extractTitle(item);
-        const category = this.extractCategory(item, areasMap, allItemsMap) || "Genel";
+        const category = this.extractCategory(item, areasMap, allItemsMap);
+
+        // If umbrella container is active, ignore any pages that don't belong to a NotMonk Area
+        if (umbrellaId && !category) {
+          continue;
+        }
+
+        const finalCategory = category || "Genel";
         const status = this.extractStatus(item);
         const today = this.extractToday(item);
         const resource = this.extractResource(item);
@@ -638,7 +686,7 @@ const NotionAPI = {
           notionPageId: item.id,
           notionUrl: item.url,
           title: title || "İsimsiz Konu",
-          category,
+          category: finalCategory,
           status,
           today,
           resource,
@@ -762,7 +810,7 @@ const NotionAPI = {
         properties: {
           title: [{ type: "text", text: { content: topic.title || "İsimsiz Konu" } }]
         },
-        icon: { emoji: topic.status === "done" ? "✅" : "📄" },
+        icon: { type: "emoji", emoji: topic.status === "done" ? "✅" : "📄" },
         children: [...metaBlocks, ...children].slice(0, 95)
       };
     }
@@ -854,23 +902,49 @@ const NotionAPI = {
   async createAreaPage(token, parentPageId, title, icon = "📁") {
     if (!token || !parentPageId || !title) return null;
     const cleanParentId = this.cleanDatabaseId(parentPageId);
+    let iconPayload = null;
+    if (typeof icon === "string" && icon.startsWith("http")) {
+      iconPayload = { type: "external", external: { url: icon } };
+    } else if (typeof icon === "object" && icon?.iconUrl && icon?.iconUrl.startsWith("http")) {
+      iconPayload = { type: "external", external: { url: icon.iconUrl } };
+    } else {
+      iconPayload = { type: "emoji", emoji: (typeof icon === "object" ? icon?.icon : icon) || "📁" };
+    }
+
+    const pagePayload = {
+      parent: { page_id: cleanParentId },
+      properties: {
+        title: [{ type: "text", text: { content: title } }]
+      },
+      icon: iconPayload
+    };
+
     try {
-      const res = await fetch(`${NOTION_BASE_URL}/pages`, {
+      let res = await fetch(`${NOTION_BASE_URL}/pages`, {
         method: "POST",
         headers: this.getHeaders(token),
-        body: JSON.stringify({
-          parent: { page_id: cleanParentId },
-          properties: {
-            title: [{ type: "text", text: { content: title } }]
-          },
-          icon: { emoji: icon }
-        })
+        body: JSON.stringify(pagePayload)
       });
+
+      if (!res.ok) {
+        // Fallback: check if parent was actually a database
+        const errJson = await res.json().catch(() => ({}));
+        if (errJson.message && (errJson.message.includes("database") || errJson.message.includes("parent"))) {
+          pagePayload.parent = { database_id: cleanParentId };
+          res = await fetch(`${NOTION_BASE_URL}/pages`, {
+            method: "POST",
+            headers: this.getHeaders(token),
+            body: JSON.stringify(pagePayload)
+          });
+        }
+      }
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         console.warn("Alan sayfası oluşturulamadı:", err);
         return null;
       }
+
       const data = await res.json();
       return {
         id: data.id.replace(/-/g, ""),
