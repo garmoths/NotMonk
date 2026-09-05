@@ -708,6 +708,133 @@ const NotionAPI = {
     return { areas, topics, areasMap, umbrellaId };
   },
 
+  async fetchRecentWorkspaceChanges(token, explicitDbId = null, existingTopics = [], knownAreaMapping = {}) {
+    if (!token) return null;
+
+    try {
+      const res = await fetch(`${NOTION_BASE_URL}/search`, {
+        method: "POST",
+        headers: this.getHeaders(token),
+        body: JSON.stringify({
+          sort: {
+            direction: "descending",
+            timestamp: "last_edited_time"
+          },
+          page_size: 25
+        })
+      });
+
+      if (!res.ok) {
+        return null;
+      }
+
+      const data = await res.json();
+      const results = data.results || [];
+      if (!results.length) return null;
+
+      // Build area reverse lookup: notionId -> areaTitle
+      const areaIdToTitle = new Map();
+      Object.entries(knownAreaMapping || {}).forEach(([catTitle, meta]) => {
+        if (meta?.id) {
+          areaIdToTitle.set(this.cleanDatabaseId(meta.id), catTitle);
+        }
+      });
+
+      const existingMap = new Map();
+      existingTopics.forEach(t => {
+        if (t.notionPageId) {
+          existingMap.set(this.cleanDatabaseId(t.notionPageId), t);
+        }
+      });
+
+      const updatedTopics = [];
+      const newTopics = [];
+      const archivedPageIds = [];
+
+      for (const item of results) {
+        const cleanId = item.id.replace(/-/g, "");
+
+        // 1. Check if archived/deleted in Notion
+        if (item.archived) {
+          archivedPageIds.push(cleanId);
+          continue;
+        }
+
+        // 2. Ignore umbrella or area pages from being treated as topics
+        const title = this.extractTitle(item) || "";
+        const cleanTitle = title.trim().toLowerCase();
+        if (cleanTitle.includes("notmonk")) continue;
+        if (areaIdToTitle.has(cleanId)) continue;
+
+        if (item.object !== "page") continue;
+
+        const parentId = (item.parent?.page_id || item.parent?.database_id || "").replace(/-/g, "");
+        const local = existingMap.get(cleanId);
+
+        // Determine category
+        let category = "";
+        if (areaIdToTitle.has(parentId)) {
+          category = areaIdToTitle.get(parentId);
+        } else if (local?.category) {
+          category = local.category;
+        } else {
+          category = this.extractCategory(item, null, null) || "Genel";
+        }
+
+        const remoteEditedMs = new Date(item.last_edited_time || 0).getTime();
+        const localEditedMs = local?.notionLastEditedTime || local?.updatedAt || 0;
+
+        // Is this topic newer in Notion by more than 1500ms?
+        const isNewer = !local || (remoteEditedMs - localEditedMs > 1500);
+
+        if (isNewer) {
+          const status = this.extractStatus(item);
+          const today = this.extractToday(item);
+          const resource = this.extractResource(item);
+
+          let freshNotes = local?.notes || "";
+          try {
+            const fetchedHTML = await this.fetchPageBlocksHTML(token, item.id);
+            if (fetchedHTML !== null && fetchedHTML !== undefined) {
+              freshNotes = fetchedHTML;
+            }
+          } catch (e) {
+            console.warn("[NotMonk] Hızlı blok çekimi hatası:", e);
+          }
+
+          const topicData = {
+            id: local?.id || crypto.randomUUID(),
+            notionPageId: item.id,
+            notionUrl: item.url,
+            title: title.trim() || "İsimsiz Konu",
+            category,
+            status,
+            today: today !== undefined ? today : (local?.today || false),
+            resource: resource || local?.resource || "",
+            notes: freshNotes,
+            notionLastEditedTime: remoteEditedMs,
+            updatedAt: Date.now()
+          };
+
+          if (local) {
+            updatedTopics.push(topicData);
+          } else {
+            newTopics.push(topicData);
+          }
+        }
+      }
+
+      return {
+        updatedTopics,
+        newTopics,
+        archivedPageIds
+      };
+    } catch (e) {
+      console.warn("[NotMonk] fetchRecentWorkspaceChanges genel hata:", e);
+      return null;
+    }
+  },
+
   async fetchAllWorkspaceData(token, explicitDbId = null, onProgress = null) {
     if (!token) throw new Error("Notion API Token eksik.");
     if (onProgress) onProgress("Notion Teamspace ve sayfaları taranıyor...");

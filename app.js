@@ -137,29 +137,32 @@ async function init() {
   checkNotionStatusBackground();
   syncUnmappedCategoriesToNotion();
 
-  // ── Canlı Gerçek Zamanlı Senkronizasyon ──
+  // ── Canlı Gerçek Zamanlı Senkronizasyon (Anlık İki Yönlü) ──
   if (state.notionToken) {
-    autoSyncFromNotion();
+    autoSyncFromNotion({ fastOnly: true });
   }
 
   window.addEventListener("focus", () => {
     if (state.notionToken && !isEditorDirty && !isSyncingNotion) {
-      autoSyncFromNotion();
+      autoSyncFromNotion({ fastOnly: true });
     }
   });
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && state.notionToken && !isEditorDirty && !isSyncingNotion) {
-      autoSyncFromNotion();
+      autoSyncFromNotion({ fastOnly: true });
     }
   });
 
-  // Arka plan otomatik heartbeat: Her 30 saniyede bir sessizce Notion'ı yoklar
+  // Arka plan otomatik heartbeat: Sekme etkinken her 4 saniyede bir sessizce Notion'ı yoklar
   setInterval(() => {
     if (state.notionToken && !isEditorDirty && !isSyncingNotion) {
-      autoSyncFromNotion();
+      const isVisible = document.visibilityState === "visible";
+      if (isVisible) {
+        autoSyncFromNotion({ fastOnly: true });
+      }
     }
-  }, 30000);
+  }, 4000);
 }
 
 // ── Events ───────────────────────────────────────────────────────────────────
@@ -535,6 +538,25 @@ function openForm(topic = null) {
   isEditorDirty = false;
   dialog.showModal();
   $("#title").focus();
+
+  // Arka planda Notion'daki en güncel blokları sessizce kontrol et
+  if (topic?.notionPageId && state.notionToken) {
+    NotionAPI.fetchPageBlocksHTML(state.notionToken, topic.notionPageId).then(freshHtml => {
+      if (freshHtml && !isEditorDirty && dialog.open && $("#edit-id").value === topic.id) {
+        if (freshHtml !== topic.notes) {
+          topic.notes = freshHtml;
+          if (typeof RichEditor !== "undefined") {
+            RichEditor.setHTML(freshHtml);
+          }
+          $("#notes").value = freshHtml;
+          $("#note-count").textContent = typeof RichEditor !== "undefined"
+            ? RichEditor.getPlainText().length
+            : freshHtml.length;
+          save();
+        }
+      }
+    }).catch(e => console.warn("[NotMonk] Canlı blok kontrolü:", e));
+  }
 }
 
 function markDirty() { isEditorDirty = true; $("#save-hint").textContent = "Kaydedilmemiş değişiklikler"; }
@@ -1405,6 +1427,7 @@ async function syncTopicToNotion(topic) {
     if (res) {
       topic.notionPageId = res.notionPageId;
       topic.notionUrl = res.notionUrl;
+      topic.notionLastEditedTime = Date.now();
       await save();
     }
   } catch (e) {
@@ -1463,7 +1486,7 @@ async function pushAllToNotion() {
   setTimeout(() => progressWrap.classList.add("hidden"), 4000);
 }
 
-async function syncFromNotionInternal({ silent = false } = {}) {
+async function syncFromNotionInternal({ silent = false, fastOnly = false } = {}) {
   if (!state.notionToken) {
     if (!silent) alert("Önce Notion API Token girmelisin.");
     return;
@@ -1489,6 +1512,81 @@ async function syncFromNotionInternal({ silent = false } = {}) {
   }
 
   try {
+    // ── Hızlı Canlı Senkronizasyon (Son Değişiklikler) ──
+    if (fastOnly && state.topics.length > 0) {
+      const changes = await NotionAPI.fetchRecentWorkspaceChanges(
+        state.notionToken,
+        state.notionDbId,
+        state.topics,
+        state.areaMapping
+      );
+
+      if (changes) {
+        let hasChanges = false;
+
+        // 1. Silinen / Arşivlenen sayfaları NotMonk'tan da kaldır
+        if (changes.archivedPageIds && changes.archivedPageIds.length > 0) {
+          const initialLen = state.topics.length;
+          state.topics = state.topics.filter(t => {
+            const cleanId = NotionAPI.cleanDatabaseId(t.notionPageId);
+            return !changes.archivedPageIds.includes(cleanId);
+          });
+          if (state.topics.length !== initialLen) hasChanges = true;
+        }
+
+        // 2. Güncellenen konuları NotMonk'a aktar
+        if (changes.updatedTopics && changes.updatedTopics.length > 0) {
+          for (const remote of changes.updatedTopics) {
+            const existing = state.topics.find(t =>
+              NotionAPI.cleanDatabaseId(t.notionPageId) === NotionAPI.cleanDatabaseId(remote.notionPageId)
+            );
+            if (existing) {
+              existing.title = remote.title;
+              existing.status = remote.status;
+              existing.notes = remote.notes;
+              existing.resource = remote.resource;
+              existing.notionLastEditedTime = remote.notionLastEditedTime;
+              existing.updatedAt = remote.updatedAt;
+              hasChanges = true;
+
+              // Eğer konu şu an düzenleme modalında açıksa ve kullanıcı henüz yazmıyorsa canlı güncelle!
+              if (dialog.open && $("#edit-id").value === existing.id && !isEditorDirty) {
+                $("#title").value = existing.title;
+                dialog.dataset.status = existing.status;
+                renderEditorStatus();
+                if (typeof RichEditor !== "undefined") {
+                  RichEditor.setHTML(existing.notes);
+                }
+                $("#notes").value = existing.notes;
+                $("#note-count").textContent = typeof RichEditor !== "undefined"
+                  ? RichEditor.getPlainText().length
+                  : existing.notes.length;
+              }
+            }
+          }
+        }
+
+        // 3. Notion'da yeni açılan konuları ekle
+        if (changes.newTopics && changes.newTopics.length > 0) {
+          for (const newTopic of changes.newTopics) {
+            state.topics.push(newTopic);
+            if (newTopic.category && !state.categories.includes(newTopic.category)) {
+              state.categories.push(newTopic.category);
+            }
+            hasChanges = true;
+          }
+        }
+
+        if (hasChanges) {
+          await save();
+          render();
+          showToast("✓ Notion'daki değişiklikler anında aktarıldı", "info");
+        }
+      }
+      return;
+    }
+
+    // ── Tam Senkronizasyon (Full Workspace Crawl) ──
     await syncUnmappedCategoriesToNotion();
     const { areas, topics, umbrellaId } = await NotionAPI.fetchAllWorkspaceData(
       state.notionToken,
@@ -1601,11 +1699,11 @@ async function syncFromNotionInternal({ silent = false } = {}) {
 }
 
 async function pullAllFromNotion() {
-  return syncFromNotionInternal({ silent: false });
+  return syncFromNotionInternal({ silent: false, fastOnly: false });
 }
 
-async function autoSyncFromNotion() {
-  return syncFromNotionInternal({ silent: true });
+async function autoSyncFromNotion({ fastOnly = true } = {}) {
+  return syncFromNotionInternal({ silent: true, fastOnly });
 }
 
 init();
