@@ -1357,26 +1357,57 @@ tr.drag-over {
   background: rgba(255, 107, 107, 0.12);
 }
 
-.card-avatar {
+.card-avatar,
+.card-avatar-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   background: var(--panel2);
   border: 1px solid var(--line2);
-  font-size: 16px;
+  font-size: 17px;
   overflow: hidden;
   flex-shrink: 0;
   line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
 }
 
-.card-avatar img {
+.card-avatar-btn:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  transform: scale(1.06);
+}
+
+.card-avatar img,
+.card-avatar-btn img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.card-avatar-btn .avatar-hover-cam {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  border-radius: 8px;
+}
+
+.card-avatar-btn:hover .avatar-hover-cam {
+  opacity: 1;
 }
 
 .card-index {
@@ -1645,3 +1676,319 @@ tr.drag-over {
   border-color: var(--line2);
   background: var(--panel2);
 }
+
+/* ── New Area Avatar Row ─────────────────────────────────────────────────── */
+.new-area-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.new-category-avatar-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1.5px dashed var(--line2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.new-category-avatar-btn:hover {
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+.new-category-avatar-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-edit-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.new-category-avatar-btn:hover .avatar-edit-overlay {
+  opacity: 1;
+}
+
+.new-area-avatar-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.new-area-avatar-label span {
+  font: 700 10px/1 monospace;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.new-area-avatar-label small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Area Avatar Modal ────────────────────────────────────────────────────── */
+.area-avatar-dialog {
+  border: 1px solid var(--line2);
+  border-radius: 20px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0;
+  width: min(480px, calc(100vw - 32px));
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(108, 142, 240, 0.08);
+}
+
+.area-avatar-dialog::backdrop {
+  background: rgba(5, 8, 15, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.area-avatar-dialog .dialog-header {
+  padding: 24px 24px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.area-avatar-dialog .dialog-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.area-avatar-dialog .dialog-header h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 3px;
+  color: var(--text);
+}
+
+.area-avatar-dialog .dialog-header p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.avatar-dialog-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.avatar-preview-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  background: var(--panel2);
+  border-radius: 14px;
+  border: 1px solid var(--line);
+}
+
+.avatar-big-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 2px solid var(--line2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.avatar-big-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-upload-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.avatar-btn {
+  font-size: 13px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.avatar-btn.danger-text {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.2);
+  background: rgba(255, 107, 107, 0.06);
+}
+
+.avatar-btn.danger-text:hover {
+  background: rgba(255, 107, 107, 0.14);
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+.input-with-action {
+  display: flex;
+  gap: 8px;
+}
+
+.input-with-action input {
+  flex: 1;
+  font: 500 13px Inter, system-ui, sans-serif;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.input-with-action input:focus {
+  border-color: var(--accent);
+}
+
+.input-with-action button {
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.avatar-emoji-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.avatar-emoji-section .section-label {
+  font: 700 10px/1 monospace;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.avatar-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+
+.avatar-emoji-btn {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.avatar-emoji-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: scale(1.12);
+}
+
+.area-avatar-dialog .dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 24px;
+  border-top: none;
+}
+
+/* ── Page Title Avatar ───────────────────────────────────────────────────── */
+.page-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-title-avatar {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.page-title-avatar:hover {
+  border-color: var(--accent);
+  transform: scale(1.06);
+}
+
+.page-title-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.page-title-avatar::after {
+  content: "📷";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.page-title-avatar:hover::after {
+  opacity: 1;
+}
+

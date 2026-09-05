@@ -19,7 +19,46 @@ const $$ = s => document.querySelectorAll(s);
 const dialog = $("#topic-dialog");
 const notionDialog = $("#notion-dialog");
 const newCatDialog = $("#new-category-dialog");
+const avatarDialog = $("#area-avatar-dialog");
 let isEditorDirty = false;
+
+let currentAvatarTarget = null;
+let tempAvatarData = { icon: "📁", iconType: "emoji", iconUrl: "" };
+let pendingNewCategoryAvatar = { icon: "📁", iconType: "emoji", iconUrl: "" };
+
+function optimizeAvatarImage(file, maxSize = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.88));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 const storageGet = key => new Promise(resolve => {
@@ -160,6 +199,24 @@ function switchTab(tab) {
   }
 }
 
+function updatePageTitleAvatar() {
+  const titleAvatar = $("#page-title-avatar");
+  if (!titleAvatar) return;
+  if (state.selectedCategory) {
+    titleAvatar.classList.remove("hidden");
+    const meta = state.categoryMetadata?.[state.selectedCategory];
+    if (meta?.iconType === "image" && meta.iconUrl) {
+      titleAvatar.innerHTML = `<img src="${meta.iconUrl}" alt="${state.selectedCategory}">`;
+    } else if (meta?.iconType === "emoji" && meta.icon) {
+      titleAvatar.innerHTML = `<span>${meta.icon}</span>`;
+    } else {
+      titleAvatar.innerHTML = `<span>📁</span>`;
+    }
+  } else {
+    titleAvatar.classList.add("hidden");
+  }
+}
+
 function openCategory(categoryName) {
   state.selectedCategory = categoryName;
   state.activeTab = "modules";
@@ -171,6 +228,7 @@ function openCategory(categoryName) {
   $("#back-to-modules").classList.remove("hidden");
   $("#page-section-code").textContent = "ALAN MODÜLÜ";
   $("#page-title").textContent = categoryName;
+  updatePageTitleAvatar();
   renderTable();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -185,6 +243,7 @@ function goBackToModules() {
   $("#back-to-modules").classList.add("hidden");
   $("#page-section-code").textContent = "MÜFREDAT & ALANLAR";
   $("#page-title").textContent = "Çalışma Alanları";
+  updatePageTitleAvatar();
   renderModules();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -207,6 +266,151 @@ function bindListEnhancements() {
   };
 }
 
+function openAvatarDialog(categoryName) {
+  currentAvatarTarget = categoryName;
+  const isNew = categoryName === "__new__";
+  const titleEl = $("#avatar-dialog-title");
+  const subEl = $("#avatar-dialog-sub");
+  if (titleEl) titleEl.textContent = isNew ? "Yeni Alan Profili" : `${categoryName} Profili`;
+  if (subEl) subEl.textContent = isNew ? "Oluşturulacak alan için profil fotoğrafı veya simge seç." : "Bu alan için profil fotoğrafı veya simge belirle.";
+
+  const currentMeta = isNew ? pendingNewCategoryAvatar : (state.categoryMetadata?.[categoryName] || { icon: "📁", iconType: "emoji", iconUrl: "" });
+  tempAvatarData = { ...currentMeta };
+
+  renderAvatarPreview();
+  if (avatarDialog && typeof avatarDialog.showModal === "function") avatarDialog.showModal();
+}
+
+function renderAvatarPreview() {
+  const preview = $("#avatar-big-preview");
+  if (!preview) return;
+  if (tempAvatarData.iconType === "image" && tempAvatarData.iconUrl) {
+    preview.innerHTML = `<img src="${tempAvatarData.iconUrl}" alt="Avatar">`;
+  } else if (tempAvatarData.iconType === "emoji" && tempAvatarData.icon) {
+    preview.innerHTML = `<span>${tempAvatarData.icon}</span>`;
+  } else {
+    preview.innerHTML = `<span>📁</span>`;
+  }
+}
+
+function bindAvatarEvents() {
+  const closeBtn = $("#close-avatar-dialog");
+  const cancelBtn = $("#cancel-avatar-dialog");
+  const saveBtn = $("#save-avatar-btn");
+  const fileInput = $("#avatar-file-input");
+  const uploadBtn = $("#avatar-upload-btn");
+  const removeBtn = $("#avatar-remove-btn");
+  const urlInput = $("#avatar-url-input");
+  const applyUrlBtn = $("#avatar-apply-url-btn");
+
+  if (closeBtn) closeBtn.onclick = () => avatarDialog?.close();
+  if (cancelBtn) cancelBtn.onclick = () => avatarDialog?.close();
+  if (avatarDialog) {
+    avatarDialog.oncancel = (e) => {
+      e.preventDefault();
+      avatarDialog.close();
+    };
+  }
+
+  if (uploadBtn && fileInput) {
+    uploadBtn.onclick = () => fileInput.click();
+  }
+
+  if (fileInput) {
+    fileInput.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await optimizeAvatarImage(file);
+        tempAvatarData = { icon: "", iconType: "image", iconUrl: dataUrl };
+        renderAvatarPreview();
+      } catch (err) {
+        alert("Görsel yüklenirken bir hata oluştu.");
+      }
+      fileInput.value = "";
+    };
+  }
+
+  if (applyUrlBtn && urlInput) {
+    applyUrlBtn.onclick = () => {
+      const val = urlInput.value.trim();
+      if (!val) return;
+      tempAvatarData = { icon: "", iconType: "image", iconUrl: val };
+      renderAvatarPreview();
+      urlInput.value = "";
+    };
+  }
+
+  if (removeBtn) {
+    removeBtn.onclick = () => {
+      tempAvatarData = { icon: "", iconType: "", iconUrl: "" };
+      renderAvatarPreview();
+    };
+  }
+
+  document.querySelectorAll(".avatar-emoji-btn").forEach(btn => {
+    btn.onclick = () => {
+      const emoji = btn.textContent.trim();
+      tempAvatarData = { icon: emoji, iconType: "emoji", iconUrl: "" };
+      renderAvatarPreview();
+    };
+  });
+
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      if (!currentAvatarTarget) return;
+
+      if (currentAvatarTarget === "__new__") {
+        pendingNewCategoryAvatar = { ...tempAvatarData };
+        const previewSpan = $("#new-category-avatar-preview");
+        if (previewSpan) {
+          if (pendingNewCategoryAvatar.iconType === "image" && pendingNewCategoryAvatar.iconUrl) {
+            previewSpan.innerHTML = `<img src="${pendingNewCategoryAvatar.iconUrl}" alt="Avatar">`;
+          } else if (pendingNewCategoryAvatar.iconType === "emoji" && pendingNewCategoryAvatar.icon) {
+            previewSpan.textContent = pendingNewCategoryAvatar.icon;
+          } else {
+            previewSpan.textContent = "📁";
+          }
+        }
+        avatarDialog?.close();
+        return;
+      }
+
+      const cat = currentAvatarTarget;
+      if (!state.categoryMetadata) state.categoryMetadata = {};
+      state.categoryMetadata[cat] = {
+        ...(state.categoryMetadata[cat] || {}),
+        icon: tempAvatarData.icon || "",
+        iconType: tempAvatarData.iconType || "",
+        iconUrl: tempAvatarData.iconUrl || ""
+      };
+
+      await save();
+      renderModules();
+      updatePageTitleAvatar();
+
+      // Sync to Notion if connected and mapped
+      if (state.notionToken && state.areaMapping?.[cat]?.id) {
+        NotionAPI.updatePageIcon(state.notionToken, state.areaMapping[cat].id, tempAvatarData);
+      }
+
+      avatarDialog?.close();
+    };
+  }
+
+  const newCatAvatarBtn = $("#new-category-avatar-btn");
+  if (newCatAvatarBtn) {
+    newCatAvatarBtn.onclick = () => openAvatarDialog("__new__");
+  }
+
+  const titleAvatar = $("#page-title-avatar");
+  if (titleAvatar) {
+    titleAvatar.onclick = () => {
+      if (state.selectedCategory) openAvatarDialog(state.selectedCategory);
+    };
+  }
+}
+
 function bindEnhancements() {
   $("#close-dialog").onclick = requestEditorClose;
   $("#cancel-dialog").onclick = requestEditorClose;
@@ -215,6 +419,7 @@ function bindEnhancements() {
     requestEditorClose();
   };
   $("#theme-toggle").onclick = () => { state.theme = state.theme === "pink" ? "dark" : "pink"; applyTheme(); savePreferences(); };
+  bindAvatarEvents();
   const expandBtn = $("#expand-tab");
   if (expandBtn) {
     const isPopup = window.outerWidth < 800 && window.outerHeight < 700;
@@ -399,6 +604,9 @@ function openNewCategoryDialog() {
     input.value = "";
     input.setCustomValidity("");
   }
+  pendingNewCategoryAvatar = { icon: "📁", iconType: "emoji", iconUrl: "" };
+  const previewSpan = $("#new-category-avatar-preview");
+  if (previewSpan) previewSpan.textContent = "📁";
   newCatDialog.showModal();
   if (input) setTimeout(() => input.focus(), 100);
 }
@@ -419,12 +627,28 @@ async function submitNewCategory() {
   }
   input.setCustomValidity("");
   state.categories.push(name);
+  if (!state.categoryMetadata) state.categoryMetadata = {};
+  state.categoryMetadata[name] = { ...pendingNewCategoryAvatar };
+
   input.value = "";
   await save();
   renderCategories();
   renderModules();
   renderEditorCategories();
   newCatDialog?.close();
+
+  // If Notion is connected, auto-create Area page in Notion
+  if (state.notionToken && (state.umbrellaPageId || state.notionDbId)) {
+    const parentForArea = state.umbrellaPageId || state.notionDbId;
+    NotionAPI.createAreaPage(state.notionToken, parentForArea, name, pendingNewCategoryAvatar.icon || "📁")
+      .then(newArea => {
+        if (newArea) {
+          state.areaMapping[name] = { id: newArea.id, type: "page" };
+          save();
+        }
+      })
+      .catch(err => console.warn("Notion alan sayfası oluşturulamadı:", err));
+  }
 }
 
 function renderEditorCategories(selected) {
@@ -497,6 +721,7 @@ function render() {
   renderStats();
   renderCategories();
   syncControls();
+  updatePageTitleAvatar();
   if (state.activeTab === "modules" && !state.selectedCategory) {
     $("#modules-view").classList.remove("hidden");
     $("#topics-view").classList.add("hidden");
@@ -549,11 +774,11 @@ function renderModules() {
     }
 
     const meta = state.categoryMetadata?.[cat];
-    let iconHtml = `<span class="card-index">${String(idx).padStart(2, "0")}</span>`;
+    let iconHtml = `<button class="card-avatar-btn default" type="button" title="Profil Fotoğrafını Değiştir"><span class="card-index">${String(idx).padStart(2, "0")}</span><span class="avatar-hover-cam">📷</span></button>`;
     if (meta?.iconType === "emoji" && meta.icon) {
-      iconHtml = `<div class="card-avatar emoji" title="${cat}"><span>${meta.icon}</span></div>`;
+      iconHtml = `<button class="card-avatar-btn emoji" type="button" title="Profil Fotoğrafını Değiştir"><span>${meta.icon}</span><span class="avatar-hover-cam">📷</span></button>`;
     } else if (meta?.iconType === "image" && meta.iconUrl) {
-      iconHtml = `<div class="card-avatar img" title="${cat}"><img src="${meta.iconUrl}" alt="${cat}" loading="lazy" /></div>`;
+      iconHtml = `<button class="card-avatar-btn img" type="button" title="Profil Fotoğrafını Değiştir"><img src="${meta.iconUrl}" alt="${cat}" loading="lazy" /><span class="avatar-hover-cam">📷</span></button>`;
     }
 
     const card = document.createElement("div");
@@ -586,6 +811,13 @@ function renderModules() {
     `;
 
     card.querySelector(".card-title").textContent = cat;
+    const avatarBtn = card.querySelector(".card-avatar-btn");
+    if (avatarBtn) {
+      avatarBtn.onclick = (e) => {
+        e.stopPropagation();
+        openAvatarDialog(cat);
+      };
+    }
     const delBtn = card.querySelector(".card-delete-btn");
     if (delBtn) {
       delBtn.onclick = (e) => {

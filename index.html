@@ -45,7 +45,10 @@
         </button>
         <div>
           <span id="page-section-code" class="section-code">MÜFREDAT & ALANLAR</span>
-          <h1 id="page-title">Çalışma Alanları</h1>
+          <div class="page-title-row">
+            <button id="page-title-avatar" class="page-title-avatar hidden" type="button" title="Profil Fotoğrafını Değiştir"></button>
+            <h1 id="page-title">Çalışma Alanları</h1>
+          </div>
         </div>
       </div>
       <select id="sort-select" class="hidden" aria-hidden="true"><option value="updatedAt-desc">Elle sıralama</option></select>
@@ -344,6 +347,16 @@
         <button id="close-new-category-dialog" class="icon-button" type="button" aria-label="Kapat">✕</button>
       </header>
       <div class="mini-dialog-body">
+        <div class="new-area-avatar-row">
+          <button type="button" id="new-category-avatar-btn" class="new-category-avatar-btn" title="Simge / Fotoğraf Seç">
+            <span id="new-category-avatar-preview">📁</span>
+            <span class="avatar-edit-overlay">📷</span>
+          </button>
+          <div class="new-area-avatar-label">
+            <span>ALAN PROFİLİ / SİMGESİ</span>
+            <small>Tıklayarak fotoğraf yükle veya emoji seç</small>
+          </div>
+        </div>
         <label class="modal-field">
           <span>Alan / Modül Adı</span>
           <input id="modal-category-input" maxlength="60" placeholder="Örn: Mobil Uygulama Güvenliği" autocomplete="off">
@@ -354,6 +367,74 @@
         <button id="submit-new-category" class="primary" type="button">Oluştur →</button>
       </footer>
     </form>
+  </dialog>
+  <dialog id="area-avatar-dialog" class="area-avatar-dialog">
+    <div class="avatar-dialog-content">
+      <header class="dialog-header">
+        <div class="dialog-title-wrap">
+          <span class="dialog-icon-badge">🖼️</span>
+          <div>
+            <h2 id="avatar-dialog-title">Alan Profil Fotoğrafı</h2>
+            <p id="avatar-dialog-sub">Profil fotoğrafı veya simge belirle.</p>
+          </div>
+        </div>
+        <button id="close-avatar-dialog" class="icon-button" type="button" aria-label="Kapat">✕</button>
+      </header>
+      
+      <div class="avatar-dialog-body">
+        <div class="avatar-preview-section">
+          <div id="avatar-big-preview" class="avatar-big-preview">
+            <span id="avatar-big-preview-content">📁</span>
+          </div>
+          <div class="avatar-upload-actions">
+            <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
+            <button type="button" id="avatar-upload-btn" class="primary avatar-btn">
+              📷 Bilgisayardan Fotoğraf Yükle
+            </button>
+            <button type="button" id="avatar-remove-btn" class="secondary avatar-btn danger-text">
+              ✕ Fotoğrafı Kaldır
+            </button>
+          </div>
+        </div>
+
+        <div class="avatar-url-row">
+          <label class="modal-field">
+            <span>VEYA GÖRSEL BAĞLANTISI (URL)</span>
+            <div class="input-with-action">
+              <input id="avatar-url-input" type="url" placeholder="https://... görsel linki">
+              <button type="button" id="avatar-apply-url-btn" class="secondary">Uygula</button>
+            </div>
+          </label>
+        </div>
+
+        <div class="avatar-emoji-section">
+          <span class="section-label">VEYA HIZLI EMOJİ SEÇ</span>
+          <div class="avatar-emoji-grid">
+            <button type="button" class="avatar-emoji-btn">🛡️</button>
+            <button type="button" class="avatar-emoji-btn">💻</button>
+            <button type="button" class="avatar-emoji-btn">⚙️</button>
+            <button type="button" class="avatar-emoji-btn">☁️</button>
+            <button type="button" class="avatar-emoji-btn">🤖</button>
+            <button type="button" class="avatar-emoji-btn">📱</button>
+            <button type="button" class="avatar-emoji-btn">🎯</button>
+            <button type="button" class="avatar-emoji-btn">🚀</button>
+            <button type="button" class="avatar-emoji-btn">🔒</button>
+            <button type="button" class="avatar-emoji-btn">🧠</button>
+            <button type="button" class="avatar-emoji-btn">🎨</button>
+            <button type="button" class="avatar-emoji-btn">📊</button>
+            <button type="button" class="avatar-emoji-btn">⚡</button>
+            <button type="button" class="avatar-emoji-btn">🔥</button>
+            <button type="button" class="avatar-emoji-btn">📁</button>
+            <button type="button" class="avatar-emoji-btn">🌐</button>
+          </div>
+        </div>
+      </div>
+
+      <footer class="dialog-footer">
+        <button id="cancel-avatar-dialog" class="secondary" type="button">İptal</button>
+        <button id="save-avatar-btn" class="primary" type="button">Kaydet</button>
+      </footer>
+    </div>
   </dialog>
   <dialog id="confirm-dialog" class="confirm-dialog"><div class="confirm-icon">!</div><h2 id="confirm-title">Emin misin?</h2><p id="confirm-message"></p><div class="confirm-actions"><button id="confirm-cancel" class="secondary" type="button">Geri dön</button><button id="confirm-accept" class="confirm-danger" type="button">Onayla</button></div></dialog>
   <script src="prism.js"></script>

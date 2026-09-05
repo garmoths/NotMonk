@@ -879,6 +879,28 @@ const NotionAPI = {
     }
   },
 
+  async updatePageIcon(token, pageId, iconData) {
+    if (!token || !pageId || !iconData) return;
+    const cleanId = this.cleanDatabaseId(pageId);
+    let iconPayload = null;
+    if (iconData.iconType === "emoji" && iconData.icon) {
+      iconPayload = { type: "emoji", emoji: iconData.icon };
+    } else if (iconData.iconType === "image" && iconData.iconUrl && iconData.iconUrl.startsWith("http")) {
+      iconPayload = { type: "external", external: { url: iconData.iconUrl } };
+    }
+    if (!iconPayload) return;
+
+    try {
+      await fetch(`${NOTION_BASE_URL}/pages/${cleanId}`, {
+        method: "PATCH",
+        headers: this.getHeaders(token),
+        body: JSON.stringify({ icon: iconPayload })
+      });
+    } catch (e) {
+      console.warn("Notion sayfa ikonu güncellenemedi:", e);
+    }
+  },
+
   async syncTopic(token, defaultParentId, topic, schemaProperties = {}, areaMapping = {}, umbrellaParentId = null) {
     if (!token) return null;
 
