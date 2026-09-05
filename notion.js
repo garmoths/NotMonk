@@ -20,6 +20,13 @@ const NotionAPI = {
     return cleaned.replace(/-/g, "");
   },
 
+  formatUuid(id) {
+    if (!id) return "";
+    const clean = id.replace(/-/g, "").trim();
+    if (clean.length !== 32) return id;
+    return `${clean.slice(0, 8)}-${clean.slice(8, 12)}-${clean.slice(12, 16)}-${clean.slice(16, 20)}-${clean.slice(20)}`;
+  },
+
   async resolveDatabaseId(token, rawId) {
     let id = this.cleanDatabaseId(rawId);
     if (!token || !id) return id;
@@ -523,13 +530,12 @@ const NotionAPI = {
       return this.cleanDatabaseId(explicitId);
     }
     try {
-      // 1. First targeted search for "notmonk"
+      // 1. Search all accessible items first without query filter
       const res = await fetch(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify({
-          query: "notmonk",
-          page_size: 20
+          page_size: 100
         })
       });
       if (res.ok) {
@@ -542,14 +548,17 @@ const NotionAPI = {
         }
       }
 
-      // 2. Fallback broader search
-      const genRes = await fetch(`${NOTION_BASE_URL}/search`, {
+      // 2. Fallback: targeted search query
+      const queryRes = await fetch(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
-        body: JSON.stringify({ page_size: 50 })
+        body: JSON.stringify({
+          query: "notmonk",
+          page_size: 50
+        })
       });
-      if (genRes.ok) {
-        const data = await genRes.json();
+      if (queryRes.ok) {
+        const data = await queryRes.json();
         for (const item of (data.results || [])) {
           const title = (this.extractTitle(item) || "").trim().toLowerCase();
           if (title.includes("notmonk")) {
@@ -771,13 +780,14 @@ const NotionAPI = {
 
   async createPage(token, rawParentId, topic, isDatabase = true, schemaProperties = {}) {
     const parentId = this.cleanDatabaseId(rawParentId);
+    const formattedId = this.formatUuid(parentId);
     const children = this.buildChildrenBlocks(topic.notes);
 
     let body = {};
     if (isDatabase) {
       const properties = this.buildProperties(topic, schemaProperties);
       body = {
-        parent: { database_id: parentId },
+        parent: { type: "database_id", database_id: formattedId },
         properties,
         children: children.length > 0 ? children : undefined
       };
@@ -806,7 +816,7 @@ const NotionAPI = {
       ];
 
       body = {
-        parent: { page_id: parentId },
+        parent: { type: "page_id", page_id: formattedId },
         properties: {
           title: [{ type: "text", text: { content: topic.title || "İsimsiz Konu" } }]
         },
@@ -900,24 +910,34 @@ const NotionAPI = {
   },
 
   async createAreaPage(token, parentPageId, title, icon = "📁") {
-    if (!token || !parentPageId || !title) return null;
+    if (!token || !parentPageId || !title) {
+      throw new Error("Token, üst sayfa ID'si veya başlık eksik.");
+    }
     const cleanParentId = this.cleanDatabaseId(parentPageId);
+    const formattedId = this.formatUuid(cleanParentId);
+
     let iconPayload = null;
     if (typeof icon === "string" && icon.startsWith("http")) {
       iconPayload = { type: "external", external: { url: icon } };
     } else if (typeof icon === "object" && icon?.iconUrl && icon?.iconUrl.startsWith("http")) {
       iconPayload = { type: "external", external: { url: icon.iconUrl } };
     } else {
-      iconPayload = { type: "emoji", emoji: (typeof icon === "object" ? icon?.icon : icon) || "📁" };
+      const emojiChar = (typeof icon === "object" ? icon?.icon : icon) || "📁";
+      iconPayload = { type: "emoji", emoji: emojiChar };
     }
 
     const pagePayload = {
-      parent: { page_id: cleanParentId },
+      parent: { type: "page_id", page_id: formattedId },
       properties: {
         title: [{ type: "text", text: { content: title } }]
       },
       icon: iconPayload
     };
+
+    console.log("[NotMonk] Notion createAreaPage isteği gönderiliyor:", {
+      parent: pagePayload.parent,
+      title
+    });
 
     try {
       let res = await fetch(`${NOTION_BASE_URL}/pages`, {
@@ -927,25 +947,29 @@ const NotionAPI = {
       });
 
       if (!res.ok) {
-        // Fallback: check if parent was actually a database
         const errJson = await res.json().catch(() => ({}));
+        console.warn("[NotMonk] createAreaPage ilk deneme hatası:", res.status, errJson);
+
+        // Fallback: check if parent was actually a database
         if (errJson.message && (errJson.message.includes("database") || errJson.message.includes("parent"))) {
-          pagePayload.parent = { database_id: cleanParentId };
+          pagePayload.parent = { type: "database_id", database_id: formattedId };
           res = await fetch(`${NOTION_BASE_URL}/pages`, {
             method: "POST",
             headers: this.getHeaders(token),
             body: JSON.stringify(pagePayload)
           });
+          if (!res.ok) {
+            const dbErr = await res.json().catch(() => ({}));
+            console.error("[NotMonk] createAreaPage database_id denemesi de başarısız:", res.status, dbErr);
+            throw new Error(dbErr.message || `Notion sayfası oluşturulamadı (${res.status})`);
+          }
+        } else {
+          throw new Error(errJson.message || `Notion sayfası oluşturulamadı (${res.status})`);
         }
       }
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.warn("Alan sayfası oluşturulamadı:", err);
-        return null;
-      }
-
       const data = await res.json();
+      console.log("[NotMonk] createAreaPage başarılı:", data.id, data.url);
       return {
         id: data.id.replace(/-/g, ""),
         rawId: data.id,
@@ -954,7 +978,7 @@ const NotionAPI = {
       };
     } catch (e) {
       console.warn("createAreaPage hatası:", e);
-      return null;
+      throw e;
     }
   },
 
