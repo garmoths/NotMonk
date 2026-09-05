@@ -59,6 +59,9 @@
 
       <!-- 2. Seviye: Seçilen Modülün veya Bugünün Konuları -->
       <section id="topics-view" class="topics-view hidden">
+        <div class="control-bar-header">
+          <button id="clear-filters" class="clear-filters-link" type="button">Filtreleri temizle</button>
+        </div>
         <div class="control-bar">
           <label class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Konu veya not ara"></label>
           <label class="control-select"><span>DURUM</span><select id="status-filter">
@@ -70,10 +73,7 @@
         </div>
         <div class="result-line">
           <span><b id="result-count">0</b> konu gösteriliyor</span>
-          <div class="result-actions">
-            <button id="clear-filters">Filtreleri temizle</button>
-            <button id="add-topic-btn" class="primary area-add-topic-btn" type="button">＋ Konu Ekle</button>
-          </div>
+          <button id="add-topic-btn" class="primary area-add-topic-btn" type="button">＋ Konu Ekle</button>
         </div>
         <section id="empty-state" class="empty hidden">
           <span>＋</span>
