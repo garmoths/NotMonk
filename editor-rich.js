@@ -97,10 +97,10 @@ const RichEditor = (() => {
       if (!toolbarEl.contains(e.target) && !editorEl.contains(e.target)) {
         hideToolbar();
       }
-      if (linkPopoverEl && !linkPopoverEl.classList.contains('hidden') && !linkPopoverEl.contains(e.target) && !e.target.closest('[data-cmd="link"]') && !e.target.closest('#toolbar-link-btn')) {
+      if (linkPopoverEl && !linkPopoverEl.classList.contains('hidden') && !linkPopoverEl.contains(e.target) && !e.target.closest('[data-cmd="link"]')) {
         hideLinkPopover();
       }
-      if (imagePopoverEl && !imagePopoverEl.classList.contains('hidden') && !imagePopoverEl.contains(e.target) && !e.target.closest('[data-cmd="image"]') && !e.target.closest('#toolbar-image-btn')) {
+      if (imagePopoverEl && !imagePopoverEl.classList.contains('hidden') && !imagePopoverEl.contains(e.target) && !e.target.closest('[data-cmd="image"]')) {
         hideImagePopover();
       }
     });
@@ -228,8 +228,8 @@ const RichEditor = (() => {
     const parentRect = parentEl.getBoundingClientRect();
     const popRect = popoverEl.getBoundingClientRect();
 
-    let top = 20;
-    let left = 20;
+    let top = 40;
+    let left = Math.max(12, (parentRect.width - (popRect.width || 340)) / 2);
 
     if (range && range.getBoundingClientRect) {
       const rect = range.getBoundingClientRect();
@@ -573,6 +573,37 @@ const RichEditor = (() => {
       return;
     }
 
+    // Slash commands: e.g. typing /kod, /link, /gorsel, /h1, /h2, /terminal, /alinti, /ipucu
+    if (e.key === ' ' || e.key === 'Enter') {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount && sel.isCollapsed) {
+        let node = sel.anchorNode;
+        while (node && node.nodeType !== 1) node = node.parentNode;
+        while (node && node.parentElement !== editorEl) node = node.parentElement;
+        if (node && node.tagName === 'P') {
+          const text = node.textContent.trim().toLowerCase();
+          let matchedCmd = null;
+          if (text === '/h1' || text === '#') matchedCmd = 'h1';
+          else if (text === '/h2' || text === '##') matchedCmd = 'h2';
+          else if (text === '/kod' || text === '/code' || text === '```') matchedCmd = 'code-block';
+          else if (text === '/terminal' || text === '/bash' || text === '$$$') matchedCmd = 'terminal';
+          else if (text === '/alinti' || text === '/quote' || text === '>') matchedCmd = 'quote';
+          else if (text === '/ipucu' || text === '/info') matchedCmd = 'info';
+          else if (text === '/link') matchedCmd = 'link';
+          else if (text === '/gorsel' || text === '/image' || text === '/img') matchedCmd = 'image';
+
+          if (matchedCmd) {
+            e.preventDefault();
+            node.innerHTML = '<br>';
+            placeCaretIn(node);
+            execCmd(matchedCmd);
+            setTimeout(scrollCaretIntoView, 40);
+            return;
+          }
+        }
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       const sel = window.getSelection();
       let node = sel.anchorNode;
@@ -586,6 +617,7 @@ const RichEditor = (() => {
         placeCaretIn(p);
         pushUndoSnapshot(true);
       }
+      setTimeout(scrollCaretIntoView, 20);
     }
   }
 
@@ -702,11 +734,40 @@ const RichEditor = (() => {
     }
   }
 
+  function scrollCaretIntoView() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !editorEl) return;
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    const eRect = editorEl.getBoundingClientRect();
+
+    if (rect.width === 0 && rect.height === 0) {
+      let node = sel.anchorNode;
+      if (node && node.nodeType !== 1) node = node.parentElement;
+      if (node && editorEl.contains(node)) {
+        const nRect = node.getBoundingClientRect();
+        if (nRect.bottom > eRect.bottom - 40) {
+          editorEl.scrollTop += (nRect.bottom - eRect.bottom + 60);
+        } else if (nRect.top < eRect.top + 20) {
+          editorEl.scrollTop -= (eRect.top - nRect.top + 30);
+        }
+      }
+      return;
+    }
+
+    if (rect.bottom > eRect.bottom - 40) {
+      editorEl.scrollTop += (rect.bottom - eRect.bottom + 60);
+    } else if (rect.top < eRect.top + 20) {
+      editorEl.scrollTop -= (eRect.top - rect.top + 30);
+    }
+  }
+
   function onInput() {
     if (!editorEl.innerHTML.trim() || editorEl.innerHTML === '<br>') {
       editorEl.innerHTML = '<p><br></p>';
     }
     pushUndoSnapshot(false);
+    scrollCaretIntoView();
     editorEl.dispatchEvent(new Event('rich-change', { bubbles: true }));
   }
 
@@ -1139,11 +1200,6 @@ const RichEditor = (() => {
     const dialog = document.getElementById('topic-dialog');
     const resizer = document.getElementById('editor-resizer');
     const expandBtn = document.getElementById('toggle-editor-expand');
-    const linkBtn = document.getElementById('toolbar-link-btn');
-    const imgBtn = document.getElementById('toolbar-image-btn');
-
-    if (linkBtn) linkBtn.onclick = () => openLinkPopover();
-    if (imgBtn) imgBtn.onclick = () => openImagePopover();
 
     // Full-width expand toggle
     if (expandBtn && dialog) {
