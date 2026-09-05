@@ -121,6 +121,7 @@
           <h2 id="dialog-title">Konu ekle</h2>
         </div>
         <div class="editor-header-actions">
+          <button id="toggle-editor-expand" class="icon-button expand-modal-btn" type="button" title="Tam Ekran Genişlet / Küçült">⤢</button>
           <a id="editor-notion-link" class="editor-notion-link hidden" target="_blank" rel="noopener" title="Notion'da aç"><span>N</span> Notion'da Aç ↗</a>
           <span id="save-hint">Değişiklikler kaydedilmedi</span>
           <button id="close-dialog" class="icon-button" type="button" aria-label="Kapat">×</button>
@@ -144,9 +145,16 @@
             <div id="editor-status-buttons" class="status-buttons"></div>
           </section>
         </aside>
+        <div id="editor-resizer" class="editor-resizer" title="Genişletmek için sağa/sola sürükle"></div>
         <section class="notes-editor">
           <div class="notes-toolbar">
-            <span class="notes-label">NOT DEFTERİ</span>
+            <div class="notes-toolbar-left">
+              <span class="notes-label">NOT DEFTERİ</span>
+              <div class="notes-quick-tools">
+                <button id="toolbar-link-btn" class="notes-tool-btn" type="button" title="Bağlantı Ekle (Ctrl+K)"><span>🔗</span> Link</button>
+                <button id="toolbar-image-btn" class="notes-tool-btn" type="button" title="Görsel Ekle"><span>🖼️</span> Görsel</button>
+              </div>
+            </div>
             <span><b id="note-count">0</b> karakter</span>
           </div>
           <div class="editor-content-wrapper">
@@ -161,6 +169,8 @@
                 <button type="button" class="float-btn" data-cmd="bold" title="Kalın (Ctrl+B)"><b>B</b></button>
                 <button type="button" class="float-btn" data-cmd="italic" title="İtalik (Ctrl+I)"><i>I</i></button>
                 <button type="button" class="float-btn" data-cmd="strike" title="Üstü Çizili"><s>S</s></button>
+                <button type="button" class="float-btn" data-cmd="link" title="Bağlantı Ekle (Ctrl+K)">🔗</button>
+                <button type="button" class="float-btn" data-cmd="image" title="Görsel Ekle">🖼️</button>
                 <button type="button" class="float-btn" data-cmd="inline-code" title="Satır İçi Kod">&lt;/&gt;</button>
               </div>
               <div class="float-divider"></div>

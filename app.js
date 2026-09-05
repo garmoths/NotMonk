@@ -6,7 +6,7 @@ const starterTopics = NOTMONK_ROADMAP.map((topic, index) => ({ ...topic, id: cry
 const DEFAULT_CATEGORIES = [...NOTMONK_CATEGORIES];
 
 const state = {
-  topics: [], categories: [],
+  topics: [], categories: [], categoryMetadata: {}, areaMapping: {},
   category: "Tümü", status: "all", query: "", sort: "updatedAt-desc",
   theme: "dark", page: 1, pageSize: 10, draggedId: null,
   activeTab: "modules", selectedCategory: null,
@@ -33,17 +33,24 @@ const storageSet = value => new Promise(resolve => {
   Object.entries(value).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
   resolve();
 });
-const save = () => storageSet({ topics: state.topics, categories: state.categories });
+const save = () => storageSet({
+  topics: state.topics,
+  categories: state.categories,
+  categoryMetadata: state.categoryMetadata,
+  areaMapping: state.areaMapping
+});
 const savePreferences = () => storageSet({ preferences: { category: state.category, status: state.status, sort: state.sort, theme: state.theme, roadmapVersion: ROADMAP_VERSION } });
 const saveNotionStorage = () => storageSet({ notionConfig: { token: state.notionToken, dbId: state.notionDbId, autoSync: state.notionAutoSync } });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  const saved = await storageGet(["topics", "preferences", "categories", "notionConfig"]);
+  const saved = await storageGet(["topics", "preferences", "categories", "notionConfig", "categoryMetadata", "areaMapping"]);
   const installRoadmap = saved.preferences?.roadmapVersion !== ROADMAP_VERSION;
   state.topics = (installRoadmap ? starterTopics : (Array.isArray(saved.topics) ? saved.topics : starterTopics))
     .map(t => ({ ...t, status: ["practiced", "mastered"].includes(t.status) ? "done" : t.status }));
   state.categories = installRoadmap ? [...DEFAULT_CATEGORIES] : (Array.isArray(saved.categories) ? saved.categories : [...DEFAULT_CATEGORIES]);
+  state.categoryMetadata = saved.categoryMetadata || {};
+  state.areaMapping = saved.areaMapping || {};
   state.topics.forEach(t => { if (!state.categories.includes(t.category)) state.categories.push(t.category); });
   Object.assign(state, saved.preferences || {});
   state.activeTab = "modules";
@@ -530,6 +537,14 @@ function renderModules() {
       statusClass = "status-learning";
     }
 
+    const meta = state.categoryMetadata?.[cat];
+    let iconHtml = `<span class="card-index">${String(idx).padStart(2, "0")}</span>`;
+    if (meta?.iconType === "emoji" && meta.icon) {
+      iconHtml = `<div class="card-avatar emoji" title="${cat}"><span>${meta.icon}</span></div>`;
+    } else if (meta?.iconType === "image" && meta.iconUrl) {
+      iconHtml = `<div class="card-avatar img" title="${cat}"><img src="${meta.iconUrl}" alt="${cat}" loading="lazy" /></div>`;
+    }
+
     const card = document.createElement("div");
     card.className = "module-card";
     card.style.setProperty("--i", idx);
@@ -538,7 +553,9 @@ function renderModules() {
     card.innerHTML = `
       <div class="card-top">
         <div class="card-head">
-          <span class="card-index">${String(idx).padStart(2, "0")}</span>
+          <div class="card-head-left">
+            ${iconHtml}
+          </div>
           <span class="card-status-badge ${statusClass}">${statusText}</span>
         </div>
         <h2 class="card-title"></h2>
@@ -842,23 +859,59 @@ async function testNotionConnection() {
   const msgEl = $("#notion-status-msg");
   const testBtn = $("#notion-test-btn");
 
-  if (!token || !dbId) {
-    msgEl.textContent = "Token ve Database ID gereklidir.";
+  if (!token) {
+    msgEl.textContent = "Lütfen Notion API Token (secret) girin.";
     msgEl.className = "notion-status-msg error";
     return;
   }
 
   testBtn.disabled = true;
-  msgEl.textContent = "Bağlantı test ediliyor...";
+  msgEl.textContent = "Bağlantı ve Teamspace'ler taranıyor...";
   msgEl.className = "notion-status-msg";
 
   try {
-    const res = await NotionAPI.testConnection(token, dbId);
-    state.notionConnected = true;
-    state.notionDbTitle = res.databaseTitle;
-    state.notionDbId = res.databaseId;
-    $("#notion-db-id").value = res.databaseId;
-    msgEl.textContent = `✓ Başarılı: "${res.databaseTitle}" bağlandı.`;
+    // 1. Search accessible workspaces, pages and teamspaces
+    const discoveredAreas = await NotionAPI.searchWorkspaces(token);
+
+    if (discoveredAreas && discoveredAreas.length > 0) {
+      discoveredAreas.forEach(area => {
+        if (!state.categories.includes(area.title)) {
+          state.categories.push(area.title);
+        }
+        state.areaMapping[area.title] = { id: area.id, type: area.type };
+        if (area.icon || area.iconUrl) {
+          state.categoryMetadata[area.title] = {
+            icon: area.icon,
+            iconType: area.iconType,
+            iconUrl: area.iconUrl,
+            notionId: area.id
+          };
+        }
+      });
+      await save();
+      renderModules();
+    }
+
+    // 2. If a specific DB or parent ID is provided, test it too
+    if (dbId) {
+      const res = await NotionAPI.testConnection(token, dbId);
+      state.notionConnected = true;
+      state.notionDbTitle = res.databaseTitle;
+      state.notionDbId = res.databaseId;
+      $("#notion-db-id").value = res.databaseId;
+      msgEl.textContent = `✓ Başarılı: "${res.databaseTitle}" bağlandı (${discoveredAreas.length} alan keşfedildi).`;
+    } else if (discoveredAreas.length > 0) {
+      state.notionConnected = true;
+      state.notionDbTitle = `${discoveredAreas.length} Teamspace / Alan`;
+      msgEl.textContent = `✓ Başarılı: ${discoveredAreas.length} Notion Teamspace / Sayfa bulundu ve bağlandı.`;
+    } else {
+      state.notionConnected = false;
+      msgEl.textContent = "Uyarı: NotMonk'a bağlanmış bir Teamspace veya Sayfa bulunamadı. Notion'da Connections > NotMonk eklediğinden emin ol.";
+      msgEl.className = "notion-status-msg error";
+      updateNotionStatusUI();
+      return;
+    }
+
     msgEl.className = "notion-status-msg success";
     updateNotionStatusUI();
   } catch (err) {
@@ -877,7 +930,7 @@ async function saveNotionConfig() {
   state.notionAutoSync = $("#notion-auto-sync").checked;
   await saveNotionStorage();
   
-  if (state.notionToken && state.notionDbId) {
+  if (state.notionToken) {
     checkNotionStatusBackground();
   } else {
     state.notionConnected = false;
@@ -888,15 +941,21 @@ async function saveNotionConfig() {
 }
 
 async function checkNotionStatusBackground() {
-  if (!state.notionToken || !state.notionDbId) {
+  if (!state.notionToken) {
     state.notionConnected = false;
     updateNotionStatusUI();
     return;
   }
   try {
-    const res = await NotionAPI.testConnection(state.notionToken, state.notionDbId);
-    state.notionConnected = true;
-    state.notionDbTitle = res.databaseTitle;
+    if (state.notionDbId) {
+      const res = await NotionAPI.testConnection(state.notionToken, state.notionDbId);
+      state.notionConnected = true;
+      state.notionDbTitle = res.databaseTitle;
+    } else {
+      const areas = await NotionAPI.searchWorkspaces(state.notionToken);
+      state.notionConnected = areas.length > 0;
+      state.notionDbTitle = `${areas.length} Teamspace / Alan`;
+    }
   } catch (e) {
     state.notionConnected = false;
   }
@@ -913,9 +972,15 @@ function updateNotionStatusUI() {
 }
 
 async function syncTopicToNotion(topic) {
-  if (!state.notionToken || !state.notionDbId) return;
+  if (!state.notionToken) return;
   try {
-    const res = await NotionAPI.syncTopic(state.notionToken, state.notionDbId, topic);
+    const res = await NotionAPI.syncTopic(
+      state.notionToken,
+      state.notionDbId,
+      topic,
+      {},
+      state.areaMapping
+    );
     if (res) {
       topic.notionPageId = res.notionPageId;
       topic.notionUrl = res.notionUrl;
@@ -927,8 +992,8 @@ async function syncTopicToNotion(topic) {
 }
 
 async function pushAllToNotion() {
-  if (!state.notionToken || !state.notionDbId) {
-    alert("Önce Notion API Token ve Database ID bilgilerini kaydedip test etmelisin.");
+  if (!state.notionToken) {
+    alert("Önce Notion API Token girmelisin.");
     return;
   }
 
@@ -948,7 +1013,13 @@ async function pushAllToNotion() {
   for (const topic of state.topics) {
     progressText.textContent = `Aktarılıyor (${completed + 1}/${total}): ${topic.title}...`;
     try {
-      const res = await NotionAPI.syncTopic(state.notionToken, state.notionDbId, topic);
+      const res = await NotionAPI.syncTopic(
+        state.notionToken,
+        state.notionDbId,
+        topic,
+        {},
+        state.areaMapping
+      );
       if (res) {
         topic.notionPageId = res.notionPageId;
         topic.notionUrl = res.notionUrl;
@@ -960,19 +1031,19 @@ async function pushAllToNotion() {
     completed++;
     const percent = Math.round((completed / total) * 100);
     progressBar.style.width = `${percent}%`;
-    await new Promise(r => setTimeout(r, 350));
+    await new Promise(r => setTimeout(r, 250));
   }
 
   await save();
   renderTable();
   pushBtn.disabled = false;
-  progressText.textContent = `✓ Tamamlandı! ${total - errors}/${total} konu Notion'a aktarıldı.`;
+  progressText.textContent = `✓ Tamamlandı! ${total - errors}/${total} konu Notion'a dosya olarak aktarıldı.`;
   setTimeout(() => progressWrap.classList.add("hidden"), 4000);
 }
 
 async function pullAllFromNotion() {
-  if (!state.notionToken || !state.notionDbId) {
-    alert("Önce Notion API Token ve Database ID bilgilerini kaydedip test etmelisin.");
+  if (!state.notionToken) {
+    alert("Önce Notion API Token girmelisin.");
     return;
   }
 
@@ -983,43 +1054,65 @@ async function pullAllFromNotion() {
 
   pullBtn.disabled = true;
   progressWrap.classList.remove("hidden");
-  progressBar.style.width = "50%";
-  progressText.textContent = "Notion'dan veriler çekiliyor...";
+  progressBar.style.width = "20%";
+  progressText.textContent = "Notion Teamspace ve Alanları taranıyor...";
 
   try {
-    const remoteTopics = await NotionAPI.queryDatabase(state.notionToken, state.notionDbId);
-    if (!remoteTopics || remoteTopics.length === 0) {
-      progressText.textContent = "Notion veritabanında hiç konu bulunamadı.";
-      pullBtn.disabled = false;
-      return;
+    // 1. Discover all workspace teamspaces and parent pages
+    const discoveredAreas = await NotionAPI.searchWorkspaces(state.notionToken);
+    let areaCount = 0;
+
+    if (discoveredAreas && discoveredAreas.length > 0) {
+      discoveredAreas.forEach(area => {
+        if (!state.categories.includes(area.title)) {
+          state.categories.push(area.title);
+        }
+        state.areaMapping[area.title] = { id: area.id, type: area.type };
+        if (area.icon || area.iconUrl) {
+          state.categoryMetadata[area.title] = {
+            icon: area.icon,
+            iconType: area.iconType,
+            iconUrl: area.iconUrl,
+            notionId: area.id
+          };
+        }
+        areaCount++;
+      });
     }
 
+    progressBar.style.width = "50%";
+    progressText.textContent = "Konular ve notlar çekiliyor...";
+
+    // 2. Query topics from database if configured
     let addedCount = 0;
     let updatedCount = 0;
 
-    remoteTopics.forEach(remote => {
-      const existing = state.topics.find(t => t.notionPageId === remote.notionPageId || t.title.toLowerCase() === remote.title.toLowerCase());
-      if (existing) {
-        existing.notionPageId = remote.notionPageId;
-        existing.notionUrl = remote.notionUrl;
-        existing.status = remote.status;
-        existing.category = remote.category;
-        existing.today = remote.today;
-        if (remote.resource) existing.resource = remote.resource;
-        updatedCount++;
-      } else {
-        state.topics.push(remote);
-        if (!state.categories.includes(remote.category)) {
-          state.categories.push(remote.category);
+    if (state.notionDbId) {
+      const remoteTopics = await NotionAPI.queryDatabase(state.notionToken, state.notionDbId);
+      remoteTopics.forEach(remote => {
+        const existing = state.topics.find(t => t.notionPageId === remote.notionPageId || t.title.toLowerCase() === remote.title.toLowerCase());
+        if (existing) {
+          existing.notionPageId = remote.notionPageId;
+          existing.notionUrl = remote.notionUrl;
+          existing.status = remote.status;
+          existing.category = remote.category;
+          existing.today = remote.today;
+          if (remote.resource) existing.resource = remote.resource;
+          updatedCount++;
+        } else {
+          state.topics.push(remote);
+          if (!state.categories.includes(remote.category)) {
+            state.categories.push(remote.category);
+          }
+          addedCount++;
         }
-        addedCount++;
-      }
-    });
+      });
+    }
 
     await save();
     render();
     progressBar.style.width = "100%";
-    progressText.textContent = `✓ Başarılı: ${addedCount} yeni konu eklendi, ${updatedCount} konu güncellendi.`;
+    progressText.textContent = `✓ Başarılı: ${areaCount} Teamspace/Alan ve profil resmi senkronize edildi. (${addedCount} yeni konu, ${updatedCount} güncellendi)`;
     setTimeout(() => progressWrap.classList.add("hidden"), 4000);
   } catch (err) {
     progressText.textContent = `✕ Hata: ${err.message}`;
