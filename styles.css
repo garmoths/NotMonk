@@ -232,6 +232,166 @@ body {
   letter-spacing: -0.04em;
 }
 
+/* ── Today's Focus Card ─────────────────────────────────────────────────── */
+.today-focus {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.today-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.today-head-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.today-badge {
+  font: 700 11px monospace;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+
+.today-progress-badge {
+  font: 600 11px monospace;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+.today-clear-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 600 11px monospace;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 4px;
+  transition: all 0.12s;
+}
+
+.today-clear-btn:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.today-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.today-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.today-item:hover {
+  border-color: var(--line2);
+  transform: translateY(-1px);
+}
+
+.today-item.today-done {
+  opacity: 0.65;
+  border-color: rgba(49, 212, 149, 0.3);
+}
+
+.today-item.today-done .today-item-title {
+  text-decoration: line-through;
+}
+
+.today-item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.today-star-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.today-item-title {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.today-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.today-remove-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.today-remove-btn:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* Star Button in Table */
+.star-btn {
+  border: 0;
+  background: transparent;
+  color: #4a5665;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.star-btn:hover {
+  color: #ffc233;
+  transform: scale(1.15);
+}
+
+.star-btn.active {
+  color: #ffbe26;
+}
+
+
 
 /* ── Control Bar & Search ─────────────────────────────────────────────────── */
 .control-bar {

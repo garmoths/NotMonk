@@ -26,7 +26,19 @@
       </div><select id="sort-select" class="hidden" aria-hidden="true"><option value="updatedAt-desc">Elle sıralama</option></select>
     </section>
 
+    <section id="today-focus" class="today-focus hidden">
+      <div class="today-head">
+        <div class="today-head-title">
+          <span class="today-badge">🎯 BUGÜNÜN ODAĞI</span>
+          <span id="today-progress-badge" class="today-progress-badge">0/0 tamamlandı</span>
+        </div>
+        <button id="clear-today" class="today-clear-btn" type="button" title="Tüm odak konularını temizle">Temizle</button>
+      </div>
+      <div id="today-list" class="today-items"></div>
+    </section>
+
     <section class="workspace">
+
       <div class="control-bar">
         <label class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Konu veya not ara"></label><label class="control-select"><span>ALAN</span><select id="category-select">
           <option value="Tümü">
