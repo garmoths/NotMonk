@@ -10,6 +10,7 @@
     "128": "assets/icon-128.png"
   },
   "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://api.notion.com/*"],
   "background": {
     "service_worker": "background.js"
   },
