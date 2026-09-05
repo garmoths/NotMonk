@@ -4,6 +4,9 @@
 const RichEditor = (() => {
   let editorEl = null;
   let toolbarEl = null;
+  let linkPopoverEl = null;
+  let imagePopoverEl = null;
+  let dropZoneEl = null;
   let savedRange = null;
   const COLORS = ['#e9edef', '#6c8ef0', '#f472b6', '#34d399', '#fbbf24', '#f87171'];
   const LANGS = ['plain', 'python', 'javascript', 'bash', 'sql', 'c', 'go', 'html', 'css', 'json'];
@@ -67,6 +70,9 @@ const RichEditor = (() => {
   function init() {
     editorEl = document.getElementById('notes-editor');
     toolbarEl = document.getElementById('editor-toolbar');
+    linkPopoverEl = document.getElementById('editor-link-popover');
+    imagePopoverEl = document.getElementById('editor-image-popover');
+    dropZoneEl = document.getElementById('editor-drop-zone');
     if (!editorEl || !toolbarEl) return;
 
     // Floating selection toolbar
@@ -86,12 +92,56 @@ const RichEditor = (() => {
     editorEl.addEventListener('input', onInput);
     editorEl.addEventListener('paste', onPaste);
 
-    // Close toolbar on outside click
+    // Close toolbar and popovers on outside click
     document.addEventListener('mousedown', e => {
       if (!toolbarEl.contains(e.target) && !editorEl.contains(e.target)) {
         hideToolbar();
       }
+      if (linkPopoverEl && !linkPopoverEl.classList.contains('hidden') && !linkPopoverEl.contains(e.target) && !e.target.closest('[data-cmd="link"]') && !e.target.closest('#toolbar-link-btn')) {
+        hideLinkPopover();
+      }
+      if (imagePopoverEl && !imagePopoverEl.classList.contains('hidden') && !imagePopoverEl.contains(e.target) && !e.target.closest('[data-cmd="image"]') && !e.target.closest('#toolbar-image-btn')) {
+        hideImagePopover();
+      }
     });
+
+    // Native Drag & Drop Images into the Editor
+    const wrapper = editorEl.closest('.editor-content-wrapper');
+    if (wrapper) {
+      wrapper.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = 'copy';
+        }
+        wrapper.classList.add('drag-over');
+      });
+
+      wrapper.addEventListener('dragleave', e => {
+        e.preventDefault();
+        if (!wrapper.contains(e.relatedTarget)) {
+          wrapper.classList.remove('drag-over');
+        }
+      });
+
+      wrapper.addEventListener('drop', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        wrapper.classList.remove('drag-over');
+
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          for (const file of e.dataTransfer.files) {
+            if (file.type && file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = evt => {
+                createAndInsertImageFigure(evt.target.result, file.name);
+              };
+              reader.readAsDataURL(file);
+            }
+          }
+        }
+      });
+    }
 
     // Initialize empty state
     if (!editorEl.innerHTML.trim()) {
@@ -156,6 +206,51 @@ const RichEditor = (() => {
     }
   }
 
+  function hideLinkPopover() {
+    if (linkPopoverEl) {
+      linkPopoverEl.classList.add('hidden');
+      linkPopoverEl.style.removeProperty('top');
+      linkPopoverEl.style.removeProperty('left');
+    }
+  }
+
+  function hideImagePopover() {
+    if (imagePopoverEl) {
+      imagePopoverEl.classList.add('hidden');
+      imagePopoverEl.style.removeProperty('top');
+      imagePopoverEl.style.removeProperty('left');
+    }
+  }
+
+  function positionPopover(popoverEl, range) {
+    if (!popoverEl) return;
+    const parentEl = popoverEl.offsetParent || document.body;
+    const parentRect = parentEl.getBoundingClientRect();
+    const popRect = popoverEl.getBoundingClientRect();
+
+    let top = 20;
+    let left = 20;
+
+    if (range && range.getBoundingClientRect) {
+      const rect = range.getBoundingClientRect();
+      if (rect.width > 0 || rect.height > 0) {
+        top = rect.bottom - parentRect.top + 8;
+        left = rect.left - parentRect.left + (rect.width / 2) - ((popRect.width || 340) / 2);
+      }
+    }
+
+    const maxLeft = parentRect.width - (popRect.width || 340) - 12;
+    left = Math.max(12, Math.min(left, maxLeft));
+
+    if (top < 10) top = 16;
+    if (top + (popRect.height || 140) > parentRect.height - 10) {
+      top = Math.max(10, parentRect.height - (popRect.height || 140) - 20);
+    }
+
+    popoverEl.style.top = Math.round(top) + 'px';
+    popoverEl.style.left = Math.round(left) + 'px';
+  }
+
   function restoreRange() {
     if (!savedRange) return;
     const sel = window.getSelection();
@@ -181,8 +276,8 @@ const RichEditor = (() => {
       case 'bold':        document.execCommand('bold'); break;
       case 'italic':      document.execCommand('italic'); break;
       case 'strike':      document.execCommand('strikeThrough'); break;
-      case 'link':        insertLink(); break;
-      case 'image':       insertImage(); break;
+      case 'link':        openLinkPopover(); return;
+      case 'image':       openImagePopover(); return;
       case 'inline-code': wrapInlineCode(); break;
       case 'h1':          wrapBlock('h1'); break;
       case 'h2':          wrapBlock('h2'); break;
@@ -474,7 +569,7 @@ const RichEditor = (() => {
     // Link: Ctrl+K or Cmd+K
     if (isMetaOrCtrl && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      insertLink();
+      openLinkPopover();
       return;
     }
 
@@ -495,6 +590,39 @@ const RichEditor = (() => {
   }
 
   function onPaste(e) {
+    // 1. Direct Clipboard Image / Screenshot paste (e.g. Cmd+Shift+4, copy image from web/Figma)
+    if (e.clipboardData && e.clipboardData.items) {
+      for (const item of e.clipboardData.items) {
+        if (item.type && item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = evt => {
+              createAndInsertImageFigure(evt.target.result, 'Ekran Görüntüsü');
+            };
+            reader.readAsDataURL(file);
+            return;
+          }
+        }
+      }
+    }
+
+    // 2. Direct Clipboard Files (e.g. copied image file from desktop/Finder)
+    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+      const file = e.clipboardData.files[0];
+      if (file && file.type && file.type.startsWith('image/')) {
+        e.preventDefault();
+        const reader = new FileReader();
+        reader.onload = evt => {
+          createAndInsertImageFigure(evt.target.result, file.name);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
+
+    // 3. Text paste handling
     e.preventDefault();
     const text = (e.clipboardData || window.clipboardData).getData('text/plain');
     if (!text) return;
@@ -505,14 +633,14 @@ const RichEditor = (() => {
 
     // If pasted an image URL directly: auto-embed image
     if (isImageUrl) {
-      insertImage(trimmed);
+      createAndInsertImageFigure(trimmed, '');
       return;
     }
 
     // If pasted a URL and user has text selected: auto-link selection (Notion style)
     const sel = window.getSelection();
     if (isUrl && sel && sel.rangeCount && !sel.isCollapsed && editorEl.contains(sel.anchorNode)) {
-      insertLink(trimmed);
+      applyLinkToSelection(trimmed);
       return;
     }
 
@@ -586,6 +714,7 @@ const RichEditor = (() => {
   function getHTML() {
     const clone = editorEl.cloneNode(true);
     clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    clone.querySelectorAll('.image-actions-bar').forEach(el => el.remove());
     return clone.innerHTML;
   }
 
@@ -602,6 +731,7 @@ const RichEditor = (() => {
     }
     editorEl.querySelectorAll('.code-block-wrap').forEach(wrap => rehydrateCodeBlock(wrap));
     editorEl.querySelectorAll('.terminal-block-wrap').forEach(wrap => rehydrateTerminalBlock(wrap));
+    editorEl.querySelectorAll('.editor-image-wrap').forEach(fig => rehydrateImageBlock(fig));
     editorEl.querySelectorAll('code[class*="language-"]').forEach(code => {
       code.contentEditable = 'true';
       code.spellcheck = false;
@@ -676,78 +806,332 @@ const RichEditor = (() => {
     });
   }
 
-  // ── Links & Images ────────────────────────────────────────────────────────
-  function insertLink(customUrl) {
-    editorEl.focus();
-    let url = customUrl;
-    if (!url) {
-      url = prompt('Bağlantı URL\'si girin (örn: https://...):', 'https://');
+  // ── Notion-Style Links & Popover ──────────────────────────────────────────
+  function applyLinkToSelection(url) {
+    if (!url) return;
+    let cleanUrl = url.trim();
+    if (!/^https?:\/\//i.test(cleanUrl) && !cleanUrl.startsWith('/') && !cleanUrl.startsWith('#')) {
+      cleanUrl = 'https://' + cleanUrl;
     }
-    if (!url || url.trim() === 'https://' || url.trim() === 'http://') return;
-    url = url.trim();
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
 
-    restoreRange();
     const sel = window.getSelection();
-    if (sel && sel.rangeCount && !sel.isCollapsed) {
-      const range = sel.getRangeAt(0);
-      const text = range.toString();
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      a.textContent = text || url;
-      range.deleteContents();
-      range.insertNode(a);
-      sel.removeAllRanges();
-    } else {
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      a.textContent = url;
-      insertBlockAtCaret(a);
-    }
-    hideToolbar();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const text = range.toString() || cleanUrl;
+    const a = document.createElement('a');
+    a.href = cleanUrl;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = text;
+    range.deleteContents();
+    range.insertNode(a);
+    sel.removeAllRanges();
     pushUndoSnapshot(true);
     onInput();
   }
 
-  function insertImage(customUrl, customCaption) {
-    editorEl.focus();
-    let url = customUrl;
-    if (!url) {
-      url = prompt('Görsel URL\'si girin (örn: https://.../resim.png):', 'https://');
+  function openLinkPopover(prefillUrl = '') {
+    if (!linkPopoverEl) return;
+    const sel = window.getSelection();
+    let existingA = null;
+
+    if (sel && sel.rangeCount) {
+      savedRange = sel.getRangeAt(0).cloneRange();
+      let node = sel.anchorNode;
+      while (node && node !== editorEl) {
+        if (node.tagName === 'A') {
+          existingA = node;
+          break;
+        }
+        node = node.parentNode;
+      }
     }
-    if (!url || url.trim() === 'https://' || url.trim() === 'http://') return;
-    url = url.trim();
-    if (!/^https?:\/\//i.test(url) && !url.startsWith('data:')) url = 'https://' + url;
 
-    const caption = customCaption !== undefined ? customCaption : (prompt('Görsel açıklaması (isteğe bağlı):') || '');
+    const input = document.getElementById('link-url-input');
+    const applyBtn = document.getElementById('link-apply-btn');
+    const unlinkBtn = document.getElementById('link-unlink-btn');
+    const cancelBtn = document.getElementById('link-cancel-btn');
 
+    if (existingA) {
+      input.value = existingA.getAttribute('href') || '';
+      unlinkBtn && unlinkBtn.classList.remove('hidden');
+    } else {
+      input.value = prefillUrl || '';
+      unlinkBtn && unlinkBtn.classList.add('hidden');
+    }
+
+    hideToolbar();
+    hideImagePopover();
+    linkPopoverEl.classList.remove('hidden');
+    positionPopover(linkPopoverEl, savedRange);
+
+    setTimeout(() => {
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 40);
+
+    const closeLink = () => {
+      linkPopoverEl.classList.add('hidden');
+      linkPopoverEl.style.removeProperty('top');
+      linkPopoverEl.style.removeProperty('left');
+    };
+
+    const applyLink = () => {
+      let url = input ? input.value.trim() : '';
+      if (!url) {
+        closeLink();
+        return;
+      }
+      if (!/^https?:\/\//i.test(url) && !url.startsWith('/') && !url.startsWith('#')) {
+        url = 'https://' + url;
+      }
+
+      restoreRange();
+      const currentSel = window.getSelection();
+
+      if (existingA) {
+        existingA.href = url;
+      } else if (currentSel && currentSel.rangeCount && !currentSel.isCollapsed) {
+        const range = currentSel.getRangeAt(0);
+        const text = range.toString();
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = text || url;
+        range.deleteContents();
+        range.insertNode(a);
+        currentSel.removeAllRanges();
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = url;
+        insertBlockAtCaret(a);
+      }
+
+      closeLink();
+      pushUndoSnapshot(true);
+      onInput();
+    };
+
+    const unlink = () => {
+      if (existingA) {
+        const parent = existingA.parentNode;
+        while (existingA.firstChild) {
+          parent.insertBefore(existingA.firstChild, existingA);
+        }
+        parent.removeChild(existingA);
+        closeLink();
+        pushUndoSnapshot(true);
+        onInput();
+      }
+    };
+
+    if (applyBtn) applyBtn.onclick = applyLink;
+    if (unlinkBtn) unlinkBtn.onclick = unlink;
+    if (cancelBtn) cancelBtn.onclick = closeLink;
+
+    if (input) {
+      input.onkeydown = e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applyLink();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeLink();
+          editorEl.focus();
+        }
+      };
+    }
+  }
+
+  // ── Notion-Style Images & Popover ─────────────────────────────────────────
+  function openImagePopover() {
+    if (!imagePopoverEl) return;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount) {
+      savedRange = sel.getRangeAt(0).cloneRange();
+    }
+
+    const fileInput = document.getElementById('note-image-file-input');
+    const uploadBtn = document.getElementById('img-upload-btn');
+    const urlInput = document.getElementById('img-url-input');
+    const captionInput = document.getElementById('img-caption-input');
+    const applyBtn = document.getElementById('img-url-apply-btn');
+    const closeBtn = document.getElementById('img-pop-close');
+
+    if (urlInput) urlInput.value = '';
+    if (captionInput) captionInput.value = '';
+
+    hideToolbar();
+    hideLinkPopover();
+    imagePopoverEl.classList.remove('hidden');
+    positionPopover(imagePopoverEl, savedRange);
+
+    setTimeout(() => {
+      if (urlInput) urlInput.focus();
+    }, 40);
+
+    const closeImage = () => {
+      imagePopoverEl.classList.add('hidden');
+      imagePopoverEl.style.removeProperty('top');
+      imagePopoverEl.style.removeProperty('left');
+    };
+
+    if (closeBtn) closeBtn.onclick = closeImage;
+
+    // File upload picker
+    if (uploadBtn && fileInput) {
+      uploadBtn.onclick = () => {
+        fileInput.value = '';
+        fileInput.click();
+      };
+      fileInput.onchange = e => {
+        const file = e.target.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = evt => {
+            restoreRange();
+            createAndInsertImageFigure(evt.target.result, captionInput?.value.trim() || file.name);
+            closeImage();
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+    }
+
+    // Apply URL
+    const applyUrl = () => {
+      let url = urlInput ? urlInput.value.trim() : '';
+      if (!url) return;
+      if (!/^https?:\/\//i.test(url) && !url.startsWith('data:')) {
+        url = 'https://' + url;
+      }
+      const caption = captionInput ? captionInput.value.trim() : '';
+      restoreRange();
+      createAndInsertImageFigure(url, caption);
+      closeImage();
+    };
+
+    if (applyBtn) applyBtn.onclick = applyUrl;
+
+    if (urlInput) {
+      urlInput.onkeydown = e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applyUrl();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeImage();
+          editorEl.focus();
+        }
+      };
+    }
+  }
+
+  function createAndInsertImageFigure(url, caption = '', size = '100%') {
+    if (!url) return;
     const figure = document.createElement('figure');
     figure.className = 'editor-image-wrap';
     figure.contentEditable = 'false';
+    figure.dataset.size = size;
 
     const img = document.createElement('img');
     img.src = url;
     img.alt = caption || 'Görsel';
     img.className = 'editor-image';
     img.loading = 'lazy';
-    img.onerror = () => { img.alt = 'Görsel yüklenemedi: ' + url; };
+    img.onerror = () => { img.alt = 'Görsel yüklenemedi'; };
 
-    figure.appendChild(img);
-    if (caption) {
-      const figcap = document.createElement('figcaption');
-      figcap.className = 'editor-image-caption';
-      figcap.textContent = caption;
-      figure.appendChild(figcap);
-    }
+    const figcap = document.createElement('figcaption');
+    figcap.className = 'editor-image-caption';
+    figcap.contentEditable = 'true';
+    figcap.dataset.placeholder = 'Açıklama ekle (isteğe bağlı)...';
+    if (caption) figcap.textContent = caption;
 
-    insertBlockAtCaret(figure);
-    hideToolbar();
+    figure.append(img, figcap);
+    rehydrateImageBlock(figure);
+
+    replaceSelectionWithBlock(figure);
     pushUndoSnapshot(true);
     onInput();
+  }
+
+  function rehydrateImageBlock(figure) {
+    if (!figure) return;
+    figure.contentEditable = 'false';
+    const currentSize = figure.dataset.size || '100%';
+
+    // Rehydrate or inject interactive actions bar
+    let actionsBar = figure.querySelector('.image-actions-bar');
+    if (!actionsBar) {
+      actionsBar = document.createElement('div');
+      actionsBar.className = 'image-actions-bar';
+      actionsBar.contentEditable = 'false';
+
+      const sizeGroup = document.createElement('div');
+      sizeGroup.className = 'img-size-group';
+
+      ['25%', '50%', '75%', '100%'].forEach(sz => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `img-size-btn ${sz === currentSize ? 'active' : ''}`;
+        btn.dataset.size = sz;
+        btn.textContent = sz;
+        btn.onclick = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          figure.dataset.size = sz;
+          sizeGroup.querySelectorAll('.img-size-btn').forEach(b => b.classList.toggle('active', b.dataset.size === sz));
+          pushUndoSnapshot(true);
+          onInput();
+        };
+        sizeGroup.appendChild(btn);
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'img-del-btn';
+      delBtn.title = 'Görseli Sil';
+      delBtn.textContent = '✕';
+      delBtn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const p = document.createElement('p');
+        p.innerHTML = '<br>';
+        figure.replaceWith(p);
+        placeCaretIn(p);
+        pushUndoSnapshot(true);
+        onInput();
+      };
+
+      actionsBar.append(sizeGroup, delBtn);
+      figure.insertBefore(actionsBar, figure.firstChild);
+    }
+
+    // Rehydrate interactive caption
+    const figcap = figure.querySelector('figcaption');
+    if (figcap) {
+      figcap.contentEditable = 'true';
+      figcap.dataset.placeholder = 'Açıklama ekle (isteğe bağlı)...';
+      figcap.oninput = () => {
+        pushUndoSnapshot(false);
+        onInput();
+      };
+      figcap.onkeydown = e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          const p = document.createElement('p');
+          p.innerHTML = '<br>';
+          figure.after(p);
+          placeCaretIn(p);
+        }
+      };
+    }
   }
 
   // ── Resizer & Full Width Controls ─────────────────────────────────────────
@@ -758,8 +1142,8 @@ const RichEditor = (() => {
     const linkBtn = document.getElementById('toolbar-link-btn');
     const imgBtn = document.getElementById('toolbar-image-btn');
 
-    if (linkBtn) linkBtn.onclick = () => insertLink();
-    if (imgBtn) imgBtn.onclick = () => insertImage();
+    if (linkBtn) linkBtn.onclick = () => openLinkPopover();
+    if (imgBtn) imgBtn.onclick = () => openImagePopover();
 
     // Full-width expand toggle
     if (expandBtn && dialog) {
@@ -818,6 +1202,7 @@ const RichEditor = (() => {
   // ── Plain text export (for Notion sync) ──────────────────────────────────
   function getPlainText() {
     const clone = editorEl.cloneNode(true);
+    clone.querySelectorAll('.image-actions-bar').forEach(b => b.remove());
     clone.querySelectorAll('pre').forEach(pre => {
       pre.before(document.createTextNode('\n' + pre.textContent + '\n'));
       pre.remove();
@@ -837,5 +1222,20 @@ const RichEditor = (() => {
     return clone.textContent.replace(/\n{3,}/g, '\n\n').trim();
   }
 
-  return { init, getHTML, setHTML, getPlainText, insertCodeBlock, insertTerminalBlock, execCmd, applyPrism, insertLink, insertImage, initResizerAndExpand };
+  return {
+    init,
+    getHTML,
+    setHTML,
+    getPlainText,
+    insertCodeBlock,
+    insertTerminalBlock,
+    execCmd,
+    applyPrism,
+    openLinkPopover,
+    openImagePopover,
+    insertLink: openLinkPopover,
+    insertImage: (url, caption) => createAndInsertImageFigure(url, caption),
+    createAndInsertImageFigure,
+    initResizerAndExpand
+  };
 })();

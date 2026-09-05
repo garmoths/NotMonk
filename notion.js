@@ -98,7 +98,25 @@ const NotionAPI = {
 
   async testConnection(token, rawDatabaseId) {
     if (!token) throw new Error("Notion API anahtarı (Token) eksik.");
-    if (!rawDatabaseId) throw new Error("Notion Veritabanı ID'si eksik.");
+    if (!rawDatabaseId) {
+      // User is syncing Teamspaces directly without a single database ID
+      const userRes = await fetch(`${NOTION_BASE_URL}/users/me`, {
+        method: "GET",
+        headers: this.getHeaders(token)
+      });
+      if (!userRes.ok) {
+        const err = await userRes.json().catch(() => ({}));
+        if (userRes.status === 401) throw new Error("Geçersiz Notion API anahtarı (Unauthorized).");
+        throw new Error(err.message || `Notion API Hatası: ${userRes.status}`);
+      }
+      const botData = await userRes.json();
+      return {
+        success: true,
+        isWorkspaceOnly: true,
+        botName: botData.name || "NotMonk Bot",
+        databaseTitle: "Notion Teamspaces"
+      };
+    }
 
     const res = await this.resolveDatabaseId(token, rawDatabaseId);
     return {
@@ -339,74 +357,360 @@ const NotionAPI = {
     return blocks.slice(0, 95);
   },
 
-  // Search workspace for shared Teamspaces, parent pages and databases
-  async searchWorkspaces(token) {
-    if (!token) throw new Error("Notion API Token eksik.");
-    const res = await fetch(`${NOTION_BASE_URL}/search`, {
-      method: "POST",
-      headers: this.getHeaders(token),
-      body: JSON.stringify({
-        sort: { direction: "descending", timestamp: "last_edited_time" },
-        page_size: 100
-      })
-    });
+  extractTitle(item) {
+    if (!item) return "İsimsiz";
+    if (item.object === "database") {
+      return item.title?.map(t => t.plain_text).join("").trim() || "İsimsiz Veritabanı";
+    }
+    if (item.object === "page") {
+      for (const prop of Object.values(item.properties || {})) {
+        if (prop.type === "title") {
+          return prop.title?.map(t => t.plain_text).join("").trim() || "İsimsiz Konu";
+        }
+      }
+    }
+    return "İsimsiz";
+  },
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `Notion araması başarısız: ${res.status}`);
+  extractIcon(item) {
+    let icon = null;
+    let iconType = null;
+    let iconUrl = null;
+
+    if (item && item.icon) {
+      if (item.icon.type === "emoji") {
+        icon = item.icon.emoji;
+        iconType = "emoji";
+      } else if (item.icon.type === "external" && item.icon.external?.url) {
+        iconType = "image";
+        iconUrl = item.icon.external.url;
+      } else if (item.icon.type === "file" && item.icon.file?.url) {
+        iconType = "image";
+        iconUrl = item.icon.file.url;
+      }
+    }
+    return { icon, iconType, iconUrl };
+  },
+
+  extractStatus(item) {
+    if (!item || !item.properties) return "todo";
+    for (const key of Object.keys(item.properties)) {
+      const prop = item.properties[key];
+      if (prop.type === "status" || (prop.type === "select" && (key.toLowerCase().includes("durum") || key.toLowerCase().includes("status")))) {
+        const val = (prop.status?.name || prop.select?.name || "").toLowerCase();
+        if (val.includes("öğrendim") || val.includes("done") || val.includes("tamamlandı")) return "done";
+        if (val.includes("öğreniyorum") || val.includes("learning") || val.includes("devam")) return "learning";
+        return "todo";
+      }
+    }
+    return "todo";
+  },
+
+  extractCategory(item, areasMap) {
+    if (item && item.properties) {
+      for (const key of Object.keys(item.properties)) {
+        const prop = item.properties[key];
+        if (prop.type === "select" && (key.toLowerCase().includes("kategori") || key.toLowerCase().includes("category") || key.toLowerCase().includes("alan"))) {
+          if (prop.select?.name) return prop.select.name;
+        }
+      }
+    }
+    const parentId = (item?.parent?.page_id || item?.parent?.database_id || "").replace(/-/g, "");
+    if (parentId && areasMap && areasMap.has(parentId)) {
+      return areasMap.get(parentId).title;
+    }
+    return "";
+  },
+
+  extractResource(item) {
+    if (!item || !item.properties) return "";
+    for (const key of Object.keys(item.properties)) {
+      const prop = item.properties[key];
+      if (prop.type === "url" && prop.url) return prop.url;
+    }
+    return "";
+  },
+
+  extractToday(item) {
+    if (!item || !item.properties) return false;
+    for (const key of Object.keys(item.properties)) {
+      const prop = item.properties[key];
+      if (prop.type === "checkbox") return Boolean(prop.checkbox);
+    }
+    return false;
+  },
+
+  richTextToHTML(richText = []) {
+    if (!richText || !richText.length) return "";
+    return richText.map(t => {
+      let content = (t.plain_text || t.text?.content || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      const ann = t.annotations || {};
+      if (ann.code) content = `<code class="inline-code">${content}</code>`;
+      if (ann.bold) content = `<b>${content}</b>`;
+      if (ann.italic) content = `<i>${content}</i>`;
+      if (ann.strikethrough) content = `<s>${content}</s>`;
+
+      const href = t.text?.link?.url || t.href;
+      if (href) {
+        content = `<a href="${href}" target="_blank" rel="noopener">${content}</a>`;
+      }
+      return content;
+    }).join("");
+  },
+
+  blocksToHTML(blocks = []) {
+    if (!blocks || !blocks.length) return "";
+    const htmlParts = [];
+
+    for (const block of blocks) {
+      const type = block.type;
+      if (type === "paragraph") {
+        const text = this.richTextToHTML(block.paragraph?.rich_text);
+        htmlParts.push(text ? `<p>${text}</p>` : "<p><br></p>");
+      } else if (type === "heading_1") {
+        htmlParts.push(`<h1>${this.richTextToHTML(block.heading_1?.rich_text)}</h1>`);
+      } else if (type === "heading_2") {
+        htmlParts.push(`<h2>${this.richTextToHTML(block.heading_2?.rich_text)}</h2>`);
+      } else if (type === "heading_3") {
+        htmlParts.push(`<h3>${this.richTextToHTML(block.heading_3?.rich_text)}</h3>`);
+      } else if (type === "quote") {
+        htmlParts.push(`<blockquote class="rich-quote">${this.richTextToHTML(block.quote?.rich_text)}</blockquote>`);
+      } else if (type === "callout") {
+        const plain = block.callout?.rich_text?.map(t => t.plain_text).join("") || "";
+        if (plain.includes("Durum:") && plain.includes("Alan:")) {
+          continue;
+        }
+        const emoji = block.callout?.icon?.emoji || "💡";
+        htmlParts.push(`<div class="info-block">${emoji} ${this.richTextToHTML(block.callout?.rich_text)}</div>`);
+      } else if (type === "code") {
+        const lang = block.code?.language || "plain text";
+        const codeText = block.code?.rich_text?.map(t => t.plain_text).join("") || "";
+        const escaped = codeText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        htmlParts.push(`<div class="code-block-wrap" contenteditable="false"><div class="code-block-header"><select class="code-lang-select"><option value="${lang}" selected>${lang}</option></select><button type="button" class="code-copy-btn">kopyala</button><button type="button" class="code-del-btn">✕</button></div><pre class="code-block"><code class="language-${lang}" contenteditable="true">${escaped}</code></pre></div>`);
+      } else if (type === "image") {
+        const imgUrl = block.image?.type === "external" ? block.image?.external?.url : block.image?.file?.url;
+        if (imgUrl) {
+          const caption = this.richTextToHTML(block.image?.caption || []);
+          htmlParts.push(`<figure class="editor-image-wrap" contenteditable="false" data-size="100%"><img src="${imgUrl}" class="editor-image" loading="lazy"><figcaption class="editor-image-caption" contenteditable="true" data-placeholder="Açıklama ekle...">${caption}</figcaption></figure>`);
+        }
+      } else if (type === "divider") {
+        htmlParts.push("<hr>");
+      } else if (type === "bulleted_list_item") {
+        htmlParts.push(`<li>${this.richTextToHTML(block.bulleted_list_item?.rich_text)}</li>`);
+      } else if (type === "numbered_list_item") {
+        htmlParts.push(`<li>${this.richTextToHTML(block.numbered_list_item?.rich_text)}</li>`);
+      }
     }
 
-    const data = await res.json();
+    return htmlParts.join("");
+  },
+
+  async fetchPageBlocksHTML(token, pageId) {
+    if (!token || !pageId) return "";
+    const cleanId = this.cleanDatabaseId(pageId);
+    try {
+      const res = await fetch(`${NOTION_BASE_URL}/blocks/${cleanId}/children?page_size=100`, {
+        method: "GET",
+        headers: this.getHeaders(token)
+      });
+      if (!res.ok) return "";
+      const data = await res.json();
+      return this.blocksToHTML(data.results || []);
+    } catch (e) {
+      console.warn("Sayfa blokları çekilemedi:", pageId, e);
+      return "";
+    }
+  },
+
+  // Search workspace for shared Teamspaces, parent pages and databases with pagination
+  async searchWorkspaces(token) {
+    if (!token) throw new Error("Notion API Token eksik.");
+    let allResults = [];
+    let hasMore = true;
+    let nextCursor = undefined;
+
+    while (hasMore) {
+      const bodyPayload = { page_size: 100 };
+      if (nextCursor) bodyPayload.start_cursor = nextCursor;
+
+      const res = await fetch(`${NOTION_BASE_URL}/search`, {
+        method: "POST",
+        headers: this.getHeaders(token),
+        body: JSON.stringify(bodyPayload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Notion araması başarısız: ${res.status}`);
+      }
+
+      const data = await res.json();
+      allResults.push(...(data.results || []));
+      hasMore = Boolean(data.has_more);
+      nextCursor = data.next_cursor;
+    }
+
+    const allIds = new Set(allResults.map(r => r.id.replace(/-/g, "")));
     const areas = [];
 
-    for (const item of (data.results || [])) {
-      let title = "";
-      if (item.object === "database") {
-        title = item.title?.map(t => t.plain_text).join("") || "";
-      } else if (item.object === "page") {
-        for (const prop of Object.values(item.properties || {})) {
-          if (prop.type === "title") {
-            title = prop.title?.map(t => t.plain_text).join("") || "";
-            break;
-          }
-        }
-      }
-
+    for (const item of allResults) {
+      const title = this.extractTitle(item);
       if (!title || !title.trim()) continue;
 
-      let icon = null;
-      let iconType = null;
-      let iconUrl = null;
+      const { icon, iconType, iconUrl } = this.extractIcon(item);
+      const isDatabase = item.object === "database";
+      const isWorkspaceParent = item.parent?.type === "workspace" || item.parent?.type === "teamspace";
+      const parentPageId = item.parent?.page_id ? item.parent.page_id.replace(/-/g, "") : null;
+      const isRootPage = item.object === "page" && (!parentPageId || !allIds.has(parentPageId));
 
-      if (item.icon) {
-        if (item.icon.type === "emoji") {
-          icon = item.icon.emoji;
-          iconType = "emoji";
-        } else if (item.icon.type === "external" && item.icon.external?.url) {
-          icon = null;
-          iconType = "image";
-          iconUrl = item.icon.external.url;
-        } else if (item.icon.type === "file" && item.icon.file?.url) {
-          icon = null;
-          iconType = "image";
-          iconUrl = item.icon.file.url;
-        }
+      if (isDatabase || isWorkspaceParent || isRootPage) {
+        areas.push({
+          id: item.id.replace(/-/g, ""),
+          rawId: item.id,
+          title: title.trim(),
+          type: item.object,
+          icon,
+          iconType,
+          iconUrl,
+          url: item.url,
+          parent: item.parent
+        });
       }
-
-      areas.push({
-        id: item.id.replace(/-/g, ""),
-        rawId: item.id,
-        title: title.trim(),
-        type: item.object, // "page" or "database"
-        icon,
-        iconType,
-        iconUrl,
-        url: item.url,
-        parent: item.parent
-      });
     }
 
     return areas;
+  },
+
+  async fetchAllWorkspaceData(token, explicitDbId = null, onProgress = null) {
+    if (!token) throw new Error("Notion API Token eksik.");
+    if (onProgress) onProgress("Notion Teamspace ve sayfaları taranıyor...");
+
+    let allResults = [];
+    let hasMore = true;
+    let nextCursor = undefined;
+
+    while (hasMore) {
+      const bodyPayload = { page_size: 100 };
+      if (nextCursor) bodyPayload.start_cursor = nextCursor;
+
+      const res = await fetch(`${NOTION_BASE_URL}/search`, {
+        method: "POST",
+        headers: this.getHeaders(token),
+        body: JSON.stringify(bodyPayload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Notion araması başarısız: ${res.status}`);
+      }
+
+      const data = await res.json();
+      allResults.push(...(data.results || []));
+      hasMore = Boolean(data.has_more);
+      nextCursor = data.next_cursor;
+    }
+
+    const allIds = new Set(allResults.map(r => r.id.replace(/-/g, "")));
+    const areas = [];
+    const topics = [];
+    const areasMap = new Map();
+
+    // 1. Identify Root Containers (Teamspaces / Parent Pages / Databases)
+    for (const item of allResults) {
+      const cleanId = item.id.replace(/-/g, "");
+      const title = this.extractTitle(item);
+      const { icon, iconType, iconUrl } = this.extractIcon(item);
+
+      const isDatabase = item.object === "database";
+      const isWorkspaceParent = item.parent?.type === "workspace" || item.parent?.type === "teamspace";
+      const parentPageId = item.parent?.page_id ? item.parent.page_id.replace(/-/g, "") : null;
+      const isRootPage = item.object === "page" && (!parentPageId || !allIds.has(parentPageId));
+
+      if (isDatabase || isWorkspaceParent || isRootPage) {
+        const areaObj = {
+          id: cleanId,
+          rawId: item.id,
+          title: title || "İsimsiz Alan",
+          type: item.object,
+          icon,
+          iconType,
+          iconUrl,
+          url: item.url,
+          parent: item.parent
+        };
+        areas.push(areaObj);
+        areasMap.set(cleanId, areaObj);
+      }
+    }
+
+    // 2. Identify Child Pages (Topics)
+    for (const item of allResults) {
+      const cleanId = item.id.replace(/-/g, "");
+      if (areasMap.has(cleanId)) continue; // Skip root areas
+
+      if (item.object === "page") {
+        const title = this.extractTitle(item);
+        const category = this.extractCategory(item, areasMap) || "Genel";
+        const status = this.extractStatus(item);
+        const today = this.extractToday(item);
+        const resource = this.extractResource(item);
+
+        topics.push({
+          id: crypto.randomUUID(),
+          notionPageId: item.id,
+          notionUrl: item.url,
+          title,
+          category,
+          status,
+          today,
+          resource,
+          notes: "",
+          updatedAt: new Date(item.last_edited_time || Date.now()).getTime()
+        });
+      }
+    }
+
+    // 3. Query explicit database if configured
+    if (explicitDbId) {
+      try {
+        const dbTopics = await this.queryDatabase(token, explicitDbId);
+        for (const remote of dbTopics) {
+          const idx = topics.findIndex(t => t.notionPageId === remote.notionPageId || t.title.toLowerCase() === remote.title.toLowerCase());
+          if (idx !== -1) {
+            topics[idx] = { ...topics[idx], ...remote };
+          } else {
+            topics.push(remote);
+          }
+        }
+      } catch (e) {
+        console.warn("Veritabanı sorgulanamadı:", e);
+      }
+    }
+
+    // 4. Fetch rich notes blocks for topics
+    if (topics.length > 0 && onProgress) {
+      onProgress(`Notlar çekiliyor (0/${topics.length})...`);
+    }
+
+    let count = 0;
+    for (const topic of topics) {
+      if (topic.notionPageId && !topic.notes) {
+        const blocksHTML = await this.fetchPageBlocksHTML(token, topic.notionPageId);
+        if (blocksHTML) {
+          topic.notes = blocksHTML;
+        }
+      }
+      count++;
+      if (onProgress && count % 2 === 0) {
+        onProgress(`Notlar çekiliyor (${count}/${topics.length})...`);
+      }
+    }
+
+    return { areas, topics };
   },
 
   async createPage(token, rawParentId, topic, isDatabase = true, schemaProperties = {}) {

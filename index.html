@@ -198,6 +198,42 @@
                 <button type="button" class="float-btn float-color" data-cmd="color" data-val="#e9edef" title="Varsayılan"><span class="color-dot" style="background:#e9edef"></span></button>
               </div>
             </div>
+            <!-- Notion-style Floating Link Popover -->
+            <div id="editor-link-popover" class="editor-popover hidden">
+              <div class="popover-row">
+                <span class="popover-icon">🔗</span>
+                <input type="url" id="link-url-input" class="popover-input" placeholder="Bağlantı linki yapıştır (https://...)" autocomplete="off">
+                <button type="button" id="link-apply-btn" class="popover-btn primary-btn">Ekle</button>
+                <button type="button" id="link-unlink-btn" class="popover-btn secondary-btn hidden" title="Bağlantıyı Kaldır">Kaldır</button>
+                <button type="button" id="link-cancel-btn" class="popover-close-btn" title="Kapat">✕</button>
+              </div>
+            </div>
+            <!-- Notion-style Image Inserter Popover -->
+            <div id="editor-image-popover" class="editor-popover image-popover hidden">
+              <div class="popover-header">
+                <span class="popover-title">🖼️ Görsel Ekle</span>
+                <button type="button" id="img-pop-close" class="popover-close-btn" title="Kapat">✕</button>
+              </div>
+              <div class="image-popover-content">
+                <input type="file" id="note-image-file-input" accept="image/*" style="display: none;">
+                <button type="button" id="img-upload-btn" class="image-upload-trigger">
+                  <span class="upload-icon">📁</span>
+                  <div class="upload-text">
+                    <b class="upload-title">Bilgisayardan Görsel Seç</b>
+                    <span class="upload-sub">PNG, JPG, GIF, WebP (veya direkt sürükle / yapıştır)</span>
+                  </div>
+                </button>
+                <div class="popover-or-divider"><span>veya web bağlantısı</span></div>
+                <div class="popover-row">
+                  <input type="url" id="img-url-input" class="popover-input" placeholder="https://.../gorsel.png" autocomplete="off">
+                  <button type="button" id="img-url-apply-btn" class="popover-btn primary-btn">Ekle</button>
+                </div>
+                <input type="text" id="img-caption-input" class="popover-input popover-sub-input" placeholder="Açıklama / Başlık (isteğe bağlı)" autocomplete="off">
+              </div>
+            </div>
+            <div id="editor-drop-zone" class="editor-drop-zone hidden">
+              <div class="drop-zone-badge">📥 Görseli buraya bırak</div>
+            </div>
             <div id="notes-editor" class="rich-notes-area" contenteditable="true" spellcheck="true"></div>
             <textarea id="notes" class="hidden"></textarea>
           </div>
