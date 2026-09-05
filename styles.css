@@ -211,10 +211,10 @@ body {
 
 .dashboard-head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 30px;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
 }
 
 .section-code {
@@ -232,82 +232,6 @@ body {
   letter-spacing: -0.04em;
 }
 
-.compact-progress {
-  width: 320px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 16px 20px;
-  background: var(--panel);
-}
-
-.progress-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.progress-heading span {
-  display: block;
-  font: 700 10px monospace;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-}
-
-.progress-heading small {
-  font-size: 11px;
-  color: #616c7a;
-}
-
-.progress-heading strong {
-  font-size: 26px;
-  color: var(--text);
-  font-family: monospace;
-}
-
-.progress-track {
-  height: 6px;
-  background: #1c2430;
-  border-radius: 3px;
-  margin: 12px 0 10px;
-  overflow: hidden;
-}
-
-.progress-track i {
-  height: 100%;
-  display: block;
-  background: var(--accent);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-  box-shadow: 0 0 12px rgba(0, 237, 159, 0.4);
-}
-
-.progress-details {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.progress-details span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.detail-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.done-dot {
-  background: var(--accent);
-}
-
-.remaining-dot {
-  background: #465364;
-}
 
 /* ── Control Bar & Search ─────────────────────────────────────────────────── */
 .control-bar {
@@ -705,12 +629,10 @@ tr.drag-over {
     flex-direction: column;
     align-items: stretch;
   }
-  .compact-progress {
-    width: 100%;
-  }
   .control-bar {
     grid-template-columns: 1fr 1fr;
   }
+
   .search-wrap {
     grid-column: 1 / -1;
     border-right: 0;
