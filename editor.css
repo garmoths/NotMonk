@@ -464,23 +464,6 @@
   opacity: 0.8;
 }
 
-.rich-notes-area ul,
-.rich-notes-area ol {
-  padding-left: 24px;
-  margin: 12px 0;
-}
-
-.rich-notes-area li {
-  margin-bottom: 6px;
-  line-height: 1.65;
-}
-
-.rich-notes-area hr {
-  border: none;
-  border-top: 1px solid var(--line);
-  margin: 24px 0;
-}
-
 .editor-image-wrap {
   margin: 20px 0;
   max-width: 100%;

@@ -27,32 +27,12 @@ const NotionAPI = {
     return `${clean.slice(0, 8)}-${clean.slice(8, 12)}-${clean.slice(12, 16)}-${clean.slice(16, 20)}-${clean.slice(20)}`;
   },
 
-  async fetchWithRetry(url, options = {}, retries = 2) {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const res = await fetch(url, options);
-        if (res.status === 429 && attempt < retries) {
-          const retryAfterSec = parseInt(res.headers.get("Retry-After") || "1", 10);
-          const delay = Math.max(1000, (retryAfterSec || 1) * 1000);
-          console.warn(`[NotMonk Notion] 429 Rate Limit. ${delay}ms sonra tekrar deneniyor (Deneme ${attempt + 1}/${retries})...`);
-          await new Promise(r => setTimeout(r, delay));
-          continue;
-        }
-        return res;
-      } catch (err) {
-        if (attempt >= retries) throw err;
-        console.warn(`[NotMonk Notion] İstek başarısız: ${err.message}. Yeniden deneniyor...`);
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-      }
-    }
-  },
-
   async resolveDatabaseId(token, rawId) {
     let id = this.cleanDatabaseId(rawId);
     if (!token || !id) return id;
 
     // 1. First test if it's already a database
-    const dbRes = await this.fetchWithRetry(`${NOTION_BASE_URL}/databases/${id}`, {
+    const dbRes = await fetch(`${NOTION_BASE_URL}/databases/${id}`, {
       method: "GET",
       headers: this.getHeaders(token)
     });
@@ -67,14 +47,14 @@ const NotionAPI = {
     }
 
     // 2. If it's not a database, check if it's a page
-    const pageRes = await this.fetchWithRetry(`${NOTION_BASE_URL}/pages/${id}`, {
+    const pageRes = await fetch(`${NOTION_BASE_URL}/pages/${id}`, {
       method: "GET",
       headers: this.getHeaders(token)
     });
 
     if (pageRes.ok) {
       // Look for an existing child database inside this page
-      const blocksRes = await this.fetchWithRetry(`${NOTION_BASE_URL}/blocks/${id}/children?page_size=50`, {
+      const blocksRes = await fetch(`${NOTION_BASE_URL}/blocks/${id}/children?page_size=50`, {
         method: "GET",
         headers: this.getHeaders(token)
       });
@@ -108,7 +88,7 @@ const NotionAPI = {
     if (!token) throw new Error("Notion API anahtarı (Token) eksik.");
     if (!rawDatabaseId) {
       // User is syncing Teamspaces directly without a single database ID
-      const userRes = await this.fetchWithRetry(`${NOTION_BASE_URL}/users/me`, {
+      const userRes = await fetch(`${NOTION_BASE_URL}/users/me`, {
         method: "GET",
         headers: this.getHeaders(token)
       });
@@ -351,30 +331,6 @@ const NotionAPI = {
         return;
       }
 
-      // Lists
-      if (tag === "ul") {
-        node.querySelectorAll(":scope > li").forEach(li => {
-          blocks.push({ object: "block", type: "bulleted_list_item", bulleted_list_item: { rich_text: this.parseRichTextSpans(li) } });
-        });
-        return;
-      }
-      if (tag === "ol") {
-        node.querySelectorAll(":scope > li").forEach(li => {
-          blocks.push({ object: "block", type: "numbered_list_item", numbered_list_item: { rich_text: this.parseRichTextSpans(li) } });
-        });
-        return;
-      }
-      if (tag === "li") {
-        blocks.push({ object: "block", type: "bulleted_list_item", bulleted_list_item: { rich_text: this.parseRichTextSpans(node) } });
-        return;
-      }
-
-      // Dividers
-      if (tag === "hr") {
-        blocks.push({ object: "block", type: "divider", divider: {} });
-        return;
-      }
-
       // General paragraph (with link, bold, italic, code support)
       const text = node.textContent.trim();
       if (text) {
@@ -507,35 +463,9 @@ const NotionAPI = {
   blocksToHTML(blocks = []) {
     if (!blocks || !blocks.length) return "";
     const htmlParts = [];
-    let currentListType = null;
-    let listBuffer = [];
-
-    const flushList = () => {
-      if (currentListType && listBuffer.length) {
-        const tag = currentListType === "numbered_list_item" ? "ol" : "ul";
-        htmlParts.push(`<${tag}>${listBuffer.join("")}</${tag}>`);
-        listBuffer = [];
-        currentListType = null;
-      }
-    };
 
     for (const block of blocks) {
       const type = block.type;
-
-      if (type === "bulleted_list_item" || type === "numbered_list_item") {
-        if (currentListType && currentListType !== type) {
-          flushList();
-        }
-        currentListType = type;
-        const text = type === "bulleted_list_item"
-          ? this.richTextToHTML(block.bulleted_list_item?.rich_text)
-          : this.richTextToHTML(block.numbered_list_item?.rich_text);
-        listBuffer.push(`<li>${text}</li>`);
-        continue;
-      } else {
-        flushList();
-      }
-
       if (type === "paragraph") {
         const text = this.richTextToHTML(block.paragraph?.rich_text);
         htmlParts.push(text ? `<p>${text}</p>` : "<p><br></p>");
@@ -567,9 +497,12 @@ const NotionAPI = {
         }
       } else if (type === "divider") {
         htmlParts.push("<hr>");
+      } else if (type === "bulleted_list_item") {
+        htmlParts.push(`<li>${this.richTextToHTML(block.bulleted_list_item?.rich_text)}</li>`);
+      } else if (type === "numbered_list_item") {
+        htmlParts.push(`<li>${this.richTextToHTML(block.numbered_list_item?.rich_text)}</li>`);
       }
     }
-    flushList();
 
     return htmlParts.join("");
   },
@@ -578,7 +511,7 @@ const NotionAPI = {
     if (!token || !pageId) return "";
     const cleanId = this.cleanDatabaseId(pageId);
     try {
-      const res = await this.fetchWithRetry(`${NOTION_BASE_URL}/blocks/${cleanId}/children?page_size=100`, {
+      const res = await fetch(`${NOTION_BASE_URL}/blocks/${cleanId}/children?page_size=100`, {
         method: "GET",
         headers: this.getHeaders(token)
       });
@@ -598,7 +531,7 @@ const NotionAPI = {
     }
     try {
       // 1. Search all accessible items first without query filter
-      const res = await this.fetchWithRetry(`${NOTION_BASE_URL}/search`, {
+      const res = await fetch(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify({
@@ -616,7 +549,7 @@ const NotionAPI = {
       }
 
       // 2. Fallback: targeted search query
-      const queryRes = await this.fetchWithRetry(`${NOTION_BASE_URL}/search`, {
+      const queryRes = await fetch(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify({
@@ -650,7 +583,7 @@ const NotionAPI = {
       const bodyPayload = { page_size: 100 };
       if (nextCursor) bodyPayload.start_cursor = nextCursor;
 
-      const res = await this.fetchWithRetry(`${NOTION_BASE_URL}/search`, {
+      const res = await fetch(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify(bodyPayload)
@@ -779,7 +712,7 @@ const NotionAPI = {
     if (!token) return null;
 
     try {
-      const res = await this.fetchWithRetry(`${NOTION_BASE_URL}/search`, {
+      const res = await fetch(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify({
@@ -914,7 +847,7 @@ const NotionAPI = {
       const bodyPayload = { page_size: 100 };
       if (nextCursor) bodyPayload.start_cursor = nextCursor;
 
-      const res = await this.fetchWithRetry(`${NOTION_BASE_URL}/search`, {
+      const res = await fetch(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify(bodyPayload)
@@ -1019,7 +952,7 @@ const NotionAPI = {
       };
     }
 
-    const res = await this.fetchWithRetry(`${NOTION_BASE_URL}/pages`, {
+    const res = await fetch(`${NOTION_BASE_URL}/pages`, {
       method: "POST",
       headers: this.getHeaders(token),
       body: JSON.stringify(body)
@@ -1044,7 +977,7 @@ const NotionAPI = {
     if (!newBlocks.length) return;
 
     try {
-      const existingRes = await this.fetchWithRetry(`${NOTION_BASE_URL}/blocks/${cleanId}/children?page_size=40`, {
+      const existingRes = await fetch(`${NOTION_BASE_URL}/blocks/${cleanId}/children?page_size=40`, {
         method: "GET",
         headers: this.getHeaders(token)
       });
@@ -1052,14 +985,14 @@ const NotionAPI = {
         const existingData = await existingRes.json();
         // Delete up to 15 old blocks (skip top callout if desired)
         for (const block of (existingData.results || []).slice(0, 15)) {
-          await this.fetchWithRetry(`${NOTION_BASE_URL}/blocks/${block.id}`, {
+          await fetch(`${NOTION_BASE_URL}/blocks/${block.id}`, {
             method: "DELETE",
             headers: this.getHeaders(token)
           }).catch(() => {});
         }
       }
 
-      await this.fetchWithRetry(`${NOTION_BASE_URL}/blocks/${cleanId}/children`, {
+      await fetch(`${NOTION_BASE_URL}/blocks/${cleanId}/children`, {
         method: "PATCH",
         headers: this.getHeaders(token),
         body: JSON.stringify({ children: newBlocks.slice(0, 95) })
@@ -1080,7 +1013,7 @@ const NotionAPI = {
       };
     }
 
-    const res = await this.fetchWithRetry(`${NOTION_BASE_URL}/pages/${pageId}`, {
+    const res = await fetch(`${NOTION_BASE_URL}/pages/${pageId}`, {
       method: "PATCH",
       headers: this.getHeaders(token),
       body: JSON.stringify({ properties })
@@ -1134,7 +1067,7 @@ const NotionAPI = {
     });
 
     try {
-      let res = await this.fetchWithRetry(`${NOTION_BASE_URL}/pages`, {
+      let res = await fetch(`${NOTION_BASE_URL}/pages`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify(pagePayload)
@@ -1147,7 +1080,7 @@ const NotionAPI = {
         // Fallback: check if parent was actually a database
         if (errJson.message && (errJson.message.includes("database") || errJson.message.includes("parent"))) {
           pagePayload.parent = { type: "database_id", database_id: formattedId };
-          res = await this.fetchWithRetry(`${NOTION_BASE_URL}/pages`, {
+          res = await fetch(`${NOTION_BASE_URL}/pages`, {
             method: "POST",
             headers: this.getHeaders(token),
             body: JSON.stringify(pagePayload)
@@ -1188,7 +1121,7 @@ const NotionAPI = {
     if (!iconPayload) return;
 
     try {
-      await this.fetchWithRetry(`${NOTION_BASE_URL}/pages/${cleanId}`, {
+      await fetch(`${NOTION_BASE_URL}/pages/${cleanId}`, {
         method: "PATCH",
         headers: this.getHeaders(token),
         body: JSON.stringify({ icon: iconPayload })
@@ -1202,7 +1135,7 @@ const NotionAPI = {
     if (!token || !pageId) return;
     const cleanId = this.cleanDatabaseId(pageId);
     try {
-      await this.fetchWithRetry(`${NOTION_BASE_URL}/pages/${cleanId}`, {
+      await fetch(`${NOTION_BASE_URL}/pages/${cleanId}`, {
         method: "PATCH",
         headers: this.getHeaders(token),
         body: JSON.stringify({ archived: true })
@@ -1264,7 +1197,7 @@ const NotionAPI = {
     let nextCursor = undefined;
 
     while (hasMore) {
-      const res = await this.fetchWithRetry(`${NOTION_BASE_URL}/databases/${databaseId}/query`, {
+      const res = await fetch(`${NOTION_BASE_URL}/databases/${databaseId}/query`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify({
