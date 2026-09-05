@@ -1081,3 +1081,196 @@ tr.drag-over {
   padding: 16px 24px;
   border-top: 1px solid var(--line);
 }
+
+/* ── Hierarchical Module Cards & Drill-Down Navigation ─────────────────────── */
+.dashboard-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font: 600 13px Inter, system-ui, sans-serif;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background: var(--panel);
+  border-color: var(--line2);
+  transform: translateX(-2px);
+}
+
+.back-arrow {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.modules-view {
+  display: block;
+}
+
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.module-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  min-height: 170px;
+}
+
+.module-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--line2);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  background: var(--panel2);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.card-index {
+  font: 700 11px monospace;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.card-status-badge {
+  font: 700 10px monospace;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.card-status-badge.status-todo {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.card-status-badge.status-learning {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.card-status-badge.status-done {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(49, 212, 149, 0.2);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 16px;
+}
+
+.card-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: 600 11px monospace;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.card-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.card-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.card-progress-fill.done {
+  background: var(--success);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.card-pill {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  font: 600 10px monospace;
+}
+
+.add-module-card {
+  background: transparent;
+  border: 2px dashed var(--line);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  min-height: 170px;
+  transition: all 0.18s ease;
+}
+
+.add-module-card:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.02);
+  transform: translateY(-2px);
+}
+
+.add-module-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.add-module-text {
+  font: 600 13px Inter, system-ui, sans-serif;
+}

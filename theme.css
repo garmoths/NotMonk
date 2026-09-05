@@ -513,6 +513,85 @@ body[data-theme="pink"] .notion-row-link {
   color: #4a1329;
 }
 
+body[data-theme="pink"] .back-btn {
+  background: #f8c7da;
+  border-color: #d995b2;
+  color: #4a1329;
+}
+
+body[data-theme="pink"] .back-btn:hover {
+  background: #ffdeeb;
+  border-color: #c86f94;
+}
+
+body[data-theme="pink"] .module-card {
+  background: #f8c7da;
+  border-color: #d995b2;
+  box-shadow: 0 4px 14px rgba(135, 25, 72, 0.08);
+}
+
+body[data-theme="pink"] .module-card:hover {
+  background: #ffdeeb;
+  border-color: #c86f94;
+  box-shadow: 0 8px 24px rgba(135, 25, 72, 0.16);
+}
+
+body[data-theme="pink"] .card-index {
+  background: #f1b5ce;
+  color: #8c194b;
+}
+
+body[data-theme="pink"] .card-status-badge.status-todo {
+  background: #ffd3e4;
+  color: #7a3556;
+  border-color: #d995b2;
+}
+
+body[data-theme="pink"] .card-status-badge.status-learning {
+  background: #f1b5ce;
+  color: #8c194b;
+  border-color: #c86f94;
+}
+
+body[data-theme="pink"] .card-status-badge.status-done {
+  background: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+body[data-theme="pink"] .card-progress-bar {
+  background: #f1b5ce;
+}
+
+body[data-theme="pink"] .card-progress-fill {
+  background: #d92f78;
+}
+
+body[data-theme="pink"] .card-progress-fill.done {
+  background: #28a745;
+}
+
+body[data-theme="pink"] .card-footer {
+  border-top-color: #eab4ca;
+}
+
+body[data-theme="pink"] .card-pill {
+  background: #ffeaf2;
+  border-color: #d995b2;
+  color: #7a3556;
+}
+
+body[data-theme="pink"] .add-module-card {
+  border-color: #d995b2;
+  color: #7a3556;
+}
+
+body[data-theme="pink"] .add-module-card:hover {
+  border-color: #b51f60;
+  color: #4a1329;
+  background: #ffeaf2;
+}
+
 @media (max-width: 650px) {
   .theme-copy {
     display: none;
