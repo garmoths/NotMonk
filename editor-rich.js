@@ -66,66 +66,6 @@ const RichEditor = (() => {
     onInput();
   }
 
-  function compressImage(file, maxDimension = 1200, quality = 0.85) {
-    return new Promise(resolve => {
-      if (!file) return resolve(null);
-      if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
-        const reader = new FileReader();
-        reader.onload = e => resolve(e.target.result);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(file);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-          let width = img.naturalWidth || img.width;
-          let height = img.naturalHeight || img.height;
-
-          if (width > maxDimension || height > maxDimension) {
-            if (width > height) {
-              height = Math.round((height * maxDimension) / width);
-              width = maxDimension;
-            } else {
-              width = Math.round((width * maxDimension) / height);
-              height = maxDimension;
-            }
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve(e.target.result);
-            return;
-          }
-          ctx.drawImage(img, 0, 0, width, height);
-
-          try {
-            const webpData = canvas.toDataURL('image/webp', quality);
-            if (webpData && webpData.startsWith('data:image/webp')) {
-              resolve(webpData);
-              return;
-            }
-          } catch (_) {}
-
-          try {
-            resolve(canvas.toDataURL('image/jpeg', quality));
-          } catch (_) {
-            resolve(e.target.result);
-          }
-        };
-        img.onerror = () => resolve(e.target.result);
-        img.src = e.target.result;
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(file);
-    });
-  }
-
   // ── Init ─────────────────────────────────────────────────────────────────
   function init() {
     editorEl = document.getElementById('notes-editor');
@@ -184,7 +124,7 @@ const RichEditor = (() => {
         }
       });
 
-      wrapper.addEventListener('drop', async e => {
+      wrapper.addEventListener('drop', e => {
         e.preventDefault();
         e.stopPropagation();
         wrapper.classList.remove('drag-over');
@@ -192,10 +132,11 @@ const RichEditor = (() => {
         if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
           for (const file of e.dataTransfer.files) {
             if (file.type && file.type.startsWith('image/')) {
-              const dataUrl = await compressImage(file);
-              if (dataUrl) {
-                createAndInsertImageFigure(dataUrl, file.name);
-              }
+              const reader = new FileReader();
+              reader.onload = evt => {
+                createAndInsertImageFigure(evt.target.result, file.name);
+              };
+              reader.readAsDataURL(file);
             }
           }
         }
@@ -346,9 +287,6 @@ const RichEditor = (() => {
       case 'terminal':    insertTerminalBlock(); break;
       case 'quote':       insertQuoteBlock(); break;
       case 'info':        insertInfoBlock(); break;
-      case 'ul':          document.execCommand('insertUnorderedList'); break;
-      case 'ol':          document.execCommand('insertOrderedList'); break;
-      case 'hr':          document.execCommand('insertHorizontalRule'); break;
     }
     hideToolbar();
     pushUndoSnapshot(true);
@@ -653,9 +591,6 @@ const RichEditor = (() => {
           else if (text === '/ipucu' || text === '/info') matchedCmd = 'info';
           else if (text === '/link') matchedCmd = 'link';
           else if (text === '/gorsel' || text === '/image' || text === '/img') matchedCmd = 'image';
-          else if (text === '/liste' || text === '/list' || text === '/ul' || text === '-' || text === '*') matchedCmd = 'ul';
-          else if (text === '/sayi' || text === '/num' || text === '/ol' || text === '1.') matchedCmd = 'ol';
-          else if (text === '/cizgi' || text === '/hr' || text === '---') matchedCmd = 'hr';
 
           if (matchedCmd) {
             e.preventDefault();
@@ -686,7 +621,7 @@ const RichEditor = (() => {
     }
   }
 
-  async function onPaste(e) {
+  function onPaste(e) {
     // 1. Direct Clipboard Image / Screenshot paste (e.g. Cmd+Shift+4, copy image from web/Figma)
     if (e.clipboardData && e.clipboardData.items) {
       for (const item of e.clipboardData.items) {
@@ -694,10 +629,11 @@ const RichEditor = (() => {
           e.preventDefault();
           const file = item.getAsFile();
           if (file) {
-            const dataUrl = await compressImage(file);
-            if (dataUrl) {
-              createAndInsertImageFigure(dataUrl, 'Ekran Görüntüsü');
-            }
+            const reader = new FileReader();
+            reader.onload = evt => {
+              createAndInsertImageFigure(evt.target.result, 'Ekran Görüntüsü');
+            };
+            reader.readAsDataURL(file);
             return;
           }
         }
@@ -709,10 +645,11 @@ const RichEditor = (() => {
       const file = e.clipboardData.files[0];
       if (file && file.type && file.type.startsWith('image/')) {
         e.preventDefault();
-        const dataUrl = await compressImage(file);
-        if (dataUrl) {
-          createAndInsertImageFigure(dataUrl, file.name);
-        }
+        const reader = new FileReader();
+        reader.onload = evt => {
+          createAndInsertImageFigure(evt.target.result, file.name);
+        };
+        reader.readAsDataURL(file);
         return;
       }
     }
@@ -1114,15 +1051,16 @@ const RichEditor = (() => {
         fileInput.value = '';
         fileInput.click();
       };
-      fileInput.onchange = async e => {
+      fileInput.onchange = e => {
         const file = e.target.files?.[0];
         if (file && file.type.startsWith('image/')) {
-          const dataUrl = await compressImage(file);
-          if (dataUrl) {
+          const reader = new FileReader();
+          reader.onload = evt => {
             restoreRange();
-            createAndInsertImageFigure(dataUrl, captionInput?.value.trim() || file.name);
+            createAndInsertImageFigure(evt.target.result, captionInput?.value.trim() || file.name);
             closeImage();
-          }
+          };
+          reader.readAsDataURL(file);
         }
       };
     }

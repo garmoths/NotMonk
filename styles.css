@@ -504,37 +504,6 @@ th {
   white-space: nowrap;
 }
 
-th.sortable-th {
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-th.sortable-th:hover {
-  color: var(--accent, #38bdf8);
-  background: #0d131c;
-}
-
-.sort-icon {
-  display: inline-block;
-  margin-left: 4px;
-  font-size: 10px;
-  opacity: 0.45;
-  transition: opacity 0.15s, transform 0.15s;
-}
-
-th.sortable-th:hover .sort-icon {
-  opacity: 0.9;
-}
-
-th.sortable-th.active-sort {
-  color: var(--accent, #38bdf8);
-}
-
-th.sortable-th.active-sort .sort-icon {
-  opacity: 1;
-}
-
 td {
   padding: 14px 16px;
   border-bottom: 1px solid #141b24;
