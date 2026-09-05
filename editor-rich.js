@@ -8,6 +8,61 @@ const RichEditor = (() => {
   const COLORS = ['#e9edef', '#6c8ef0', '#f472b6', '#34d399', '#fbbf24', '#f87171'];
   const LANGS = ['plain', 'python', 'javascript', 'bash', 'sql', 'c', 'go', 'html', 'css', 'json'];
 
+  // ── Undo / Redo History Stack ─────────────────────────────────────────────
+  let undoStack = [];
+  let redoStack = [];
+  let isUndoRedoAction = false;
+  let lastSnapshot = '';
+  let snapshotTimer = null;
+
+  function pushUndoSnapshot(force = false) {
+    if (isUndoRedoAction || !editorEl) return;
+    const currentHTML = editorEl.innerHTML;
+    if (currentHTML === lastSnapshot) return;
+
+    if (force) {
+      if (snapshotTimer) clearTimeout(snapshotTimer);
+      undoStack.push(currentHTML);
+      if (undoStack.length > 50) undoStack.shift();
+      redoStack = [];
+      lastSnapshot = currentHTML;
+      return;
+    }
+
+    if (snapshotTimer) clearTimeout(snapshotTimer);
+    snapshotTimer = setTimeout(() => {
+      if (currentHTML !== lastSnapshot) {
+        undoStack.push(currentHTML);
+        if (undoStack.length > 50) undoStack.shift();
+        redoStack = [];
+        lastSnapshot = currentHTML;
+      }
+    }, 350);
+  }
+
+  function undo() {
+    if (undoStack.length <= 1) return;
+    isUndoRedoAction = true;
+    const current = undoStack.pop();
+    redoStack.push(current);
+    const prev = undoStack[undoStack.length - 1];
+    setHTML(prev, false);
+    lastSnapshot = prev;
+    isUndoRedoAction = false;
+    onInput();
+  }
+
+  function redo() {
+    if (!redoStack.length) return;
+    isUndoRedoAction = true;
+    const next = redoStack.pop();
+    undoStack.push(next);
+    setHTML(next, false);
+    lastSnapshot = next;
+    isUndoRedoAction = false;
+    onInput();
+  }
+
   // ── Init ─────────────────────────────────────────────────────────────────
   function init() {
     editorEl = document.getElementById('notes-editor');
@@ -42,6 +97,9 @@ const RichEditor = (() => {
     if (!editorEl.innerHTML.trim()) {
       editorEl.innerHTML = '<p><br></p>';
     }
+    undoStack = [editorEl.innerHTML];
+    redoStack = [];
+    lastSnapshot = editorEl.innerHTML;
     applyPrism();
   }
 
@@ -133,6 +191,7 @@ const RichEditor = (() => {
       case 'info':        insertInfoBlock(); break;
     }
     hideToolbar();
+    pushUndoSnapshot(true);
     onInput();
   }
 
@@ -389,6 +448,26 @@ const RichEditor = (() => {
   }
 
   function onEditorKeydown(e) {
+    const isMetaOrCtrl = e.metaKey || e.ctrlKey;
+
+    // Undo: Ctrl+Z or Cmd+Z
+    if (isMetaOrCtrl && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+      return;
+    }
+
+    // Redo: Ctrl+Y or Cmd+Y
+    if (isMetaOrCtrl && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      redo();
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       const sel = window.getSelection();
       let node = sel.anchorNode;
@@ -400,14 +479,26 @@ const RichEditor = (() => {
         p.innerHTML = '<br>';
         node.after(p);
         placeCaretIn(p);
+        pushUndoSnapshot(true);
       }
     }
   }
 
   function onPaste(e) {
     e.preventDefault();
-    const text = e.clipboardData.getData('text/plain');
-    document.execCommand('insertText', false, text);
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    if (document.queryCommandSupported && document.queryCommandSupported('insertText')) {
+      document.execCommand('insertText', false, text);
+    } else {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(text));
+      }
+    }
+    pushUndoSnapshot(true);
+    onInput();
   }
 
   // ── Prism highlight ───────────────────────────────────────────────────────
@@ -459,6 +550,7 @@ const RichEditor = (() => {
     if (!editorEl.innerHTML.trim() || editorEl.innerHTML === '<br>') {
       editorEl.innerHTML = '<p><br></p>';
     }
+    pushUndoSnapshot(false);
     editorEl.dispatchEvent(new Event('rich-change', { bubbles: true }));
   }
 
@@ -469,13 +561,10 @@ const RichEditor = (() => {
     return clone.innerHTML;
   }
 
-  function setHTML(html) {
+  function setHTML(html, resetHistory = true) {
     if (!html || html.trim() === '') {
       editorEl.innerHTML = '<p><br></p>';
-      return;
-    }
-    // Plain text migration: if no HTML tags, wrap in <p>
-    if (!/<[a-z][\s\S]*>/i.test(html)) {
+    } else if (!/<[a-z][\s\S]*>/i.test(html)) {
       editorEl.innerHTML = html
         .split('\n\n')
         .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
@@ -496,6 +585,12 @@ const RichEditor = (() => {
       });
     });
     applyPrism();
+
+    if (resetHistory) {
+      undoStack = [editorEl.innerHTML];
+      redoStack = [];
+      lastSnapshot = editorEl.innerHTML;
+    }
   }
 
   function wrap_getSelect(code) {

@@ -73,6 +73,8 @@ function bindEvents() {
   if (openFormBtn) openFormBtn.onclick = () => openForm();
   const emptyAdd = $("#empty-add");
   if (emptyAdd) emptyAdd.onclick = () => openForm();
+  const addTopicBtn = $("#add-topic-btn");
+  if (addTopicBtn) addTopicBtn.onclick = () => openForm();
   $("#tab-modules").onclick = () => switchTab("modules");
   $("#tab-today").onclick = () => switchTab("today");
   const backBtn = $("#back-to-modules");
@@ -126,7 +128,7 @@ function switchTab(tab) {
       $("#modules-view").classList.add("hidden");
       $("#topics-view").classList.remove("hidden");
       $("#back-to-modules").classList.remove("hidden");
-      $("#page-section-code").textContent = "ALAN KONULARI";
+      $("#page-section-code").textContent = "ALAN MODÜLÜ";
       $("#page-title").textContent = state.selectedCategory;
       renderTable();
     } else {
@@ -149,7 +151,7 @@ function openCategory(categoryName) {
   $("#modules-view").classList.add("hidden");
   $("#topics-view").classList.remove("hidden");
   $("#back-to-modules").classList.remove("hidden");
-  $("#page-section-code").textContent = "ALAN KONULARI";
+  $("#page-section-code").textContent = "ALAN MODÜLÜ";
   $("#page-title").textContent = categoryName;
   renderTable();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -170,20 +172,20 @@ function goBackToModules() {
 }
 
 function bindListEnhancements() {
-  const reset = () => { state.page = 1; renderTable(); };
-  const searchInput = $("#search");
-  if (searchInput) searchInput.oninput = e => { state.query = e.target.value.toLocaleLowerCase("tr"); reset(); };
   const catSel = $("#category-select");
-  if (catSel) catSel.onchange = e => { state.category = e.target.value; reset(); savePreferences(); };
-  const statusFilter = $("#status-filter");
-  if (statusFilter) statusFilter.onchange = e => { state.status = e.target.value; reset(); savePreferences(); };
+  if (catSel) catSel.onchange = e => { state.category = e.target.value; state.page = 1; renderTable(); savePreferences(); };
+  const statFil = $("#status-filter");
+  if (statFil) statFil.onchange = e => { state.status = e.target.value; state.page = 1; renderTable(); savePreferences(); };
   const sortSel = $("#sort-select");
   if (sortSel) sortSel.onchange = e => { state.sort = e.target.value; renderTable(); savePreferences(); };
-  const clearBtn = $("#clear-filters");
-  if (clearBtn) clearBtn.onclick = () => {
-    state.category = "Tümü"; state.status = "all"; state.query = ""; state.page = 1;
-    if (searchInput) searchInput.value = "";
-    syncControls(); renderTable(); savePreferences();
+  $("#search").oninput = e => { state.query = e.target.value.trim().toLocaleLowerCase("tr"); state.page = 1; renderTable(); };
+  $("#clear-filters").onclick = () => {
+    state.query = "";
+    state.status = "all";
+    $("#search").value = "";
+    $("#status-filter").value = "all";
+    renderTable();
+    savePreferences();
   };
 }
 
@@ -216,24 +218,29 @@ function openForm(topic = null) {
   $("#dialog-title").textContent = topic ? "Konuyu düzenle" : "Yeni konu";
   $("#delete-topic").classList.toggle("hidden", !topic);
 
-  // When inside a specific category, pre-select it and hide the category field entirely
-  const presetCategory = topic ? null : state.selectedCategory;
-  const hasPreset = Boolean(presetCategory);
+  // When inside a specific category, auto-assign it and hide the category field completely
+  const isInsideCategory = Boolean(state.selectedCategory);
+  const targetCategory = state.selectedCategory || topic?.category || state.categories[0];
 
   const categoryField = $(".category-field");
   const toggleCatManager = $("#toggle-category-manager");
   const categoryManager = $("#category-manager");
 
-  if (hasPreset) {
-    // Auto-assign — hide the entire category section
+  if (isInsideCategory) {
     if (categoryField) categoryField.classList.add("hidden");
+    const catSelect = $("#category");
+    if (catSelect) {
+      if (![...catSelect.options].some(o => o.value === targetCategory)) {
+        catSelect.add(new Option(targetCategory, targetCategory));
+      }
+      catSelect.value = targetCategory;
+    }
   } else {
     if (categoryField) categoryField.classList.remove("hidden");
-    categoryManager.classList.remove("open");
-    toggleCatManager.setAttribute("aria-expanded", "false");
+    if (categoryManager) categoryManager.classList.remove("open");
+    if (toggleCatManager) toggleCatManager.setAttribute("aria-expanded", "false");
+    renderEditorCategories(targetCategory);
   }
-
-  renderEditorCategories(presetCategory || topic?.category);
 
   if (topic) {
     $("#title").value = topic.title;
@@ -243,11 +250,6 @@ function openForm(topic = null) {
       RichEditor.setHTML(initialNotes);
     }
     $("#resource").value = topic.resource || "";
-  } else if (hasPreset) {
-    // Ensure the category select value is set to selectedCategory
-    const catSelect = $("#category");
-    if (catSelect) catSelect.value = presetCategory;
-    $("#notes").value = "";
     if (typeof RichEditor !== "undefined") {
       RichEditor.setHTML("");
     }
