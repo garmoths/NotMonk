@@ -10,7 +10,7 @@ const state = {
   category: "Tümü", status: "all", query: "", sort: "updatedAt-desc",
   theme: "dark", page: 1, pageSize: 10, draggedId: null,
   activeTab: "modules", selectedCategory: null,
-  notionToken: "", notionDbId: "", notionAutoSync: false,
+  notionToken: "", notionDbId: "", notionAutoSync: true,
   notionConnected: false, notionDbTitle: "",
   umbrellaPageId: ""
 };
@@ -22,6 +22,7 @@ const notionDialog = $("#notion-dialog");
 const newCatDialog = $("#new-category-dialog");
 const avatarDialog = $("#area-avatar-dialog");
 let isEditorDirty = false;
+let isSyncingNotion = false;
 
 let currentAvatarTarget = null;
 let tempAvatarData = { icon: "📁", iconType: "emoji", iconUrl: "" };
@@ -118,7 +119,7 @@ async function init() {
   if (saved.notionConfig) {
     state.notionToken = saved.notionConfig.token || "";
     state.notionDbId = saved.notionConfig.dbId || "";
-    state.notionAutoSync = Boolean(saved.notionConfig.autoSync);
+    state.notionAutoSync = saved.notionConfig.autoSync !== undefined ? Boolean(saved.notionConfig.autoSync) : true;
     if (!state.umbrellaPageId) {
       state.umbrellaPageId = saved.notionConfig.umbrellaPageId || "";
     }
@@ -135,6 +136,30 @@ async function init() {
   renderStats();
   checkNotionStatusBackground();
   syncUnmappedCategoriesToNotion();
+
+  // ── Canlı Gerçek Zamanlı Senkronizasyon ──
+  if (state.notionToken) {
+    autoSyncFromNotion();
+  }
+
+  window.addEventListener("focus", () => {
+    if (state.notionToken && !isEditorDirty && !isSyncingNotion) {
+      autoSyncFromNotion();
+    }
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && state.notionToken && !isEditorDirty && !isSyncingNotion) {
+      autoSyncFromNotion();
+    }
+  });
+
+  // Arka plan otomatik heartbeat: Her 30 saniyede bir sessizce Notion'ı yoklar
+  setInterval(() => {
+    if (state.notionToken && !isEditorDirty && !isSyncingNotion) {
+      autoSyncFromNotion();
+    }
+  }, 30000);
 }
 
 // ── Events ───────────────────────────────────────────────────────────────────
@@ -555,7 +580,7 @@ async function saveForm(e) {
   dialog.close();
   render();
 
-  if (state.notionAutoSync && state.notionToken && state.notionDbId) {
+  if (state.notionAutoSync && state.notionToken) {
     syncTopicToNotion(topic);
   }
 }
@@ -565,11 +590,16 @@ async function deleteCurrent() {
   if (!id) return;
   const accepted = await askConfirmation({ title: "Konuyu sil?", message: "Bu konu ve içindeki bütün notlar kalıcı olarak silinecek.", accept: "Evet, sil", danger: true });
   if (!accepted) return;
+  const existing = state.topics.find(t => t.id === id);
   state.topics = state.topics.filter(t => t.id !== id);
   await save();
   isEditorDirty = false;
   dialog.close();
   render();
+
+  if (state.notionToken && existing?.notionPageId) {
+    NotionAPI.archivePage(state.notionToken, existing.notionPageId);
+  }
 }
 
 async function requestEditorClose() {
@@ -796,6 +826,7 @@ async function removeCategory(category) {
     danger: true
   });
   if (!accepted) return;
+  const notionAreaId = state.areaMapping?.[category]?.id;
   state.categories = state.categories.filter(c => c !== category);
   state.topics = state.topics.filter(t => t.category !== category);
   if (state.categoryMetadata) delete state.categoryMetadata[category];
@@ -805,6 +836,10 @@ async function removeCategory(category) {
   renderCategories();
   renderModules();
   markDirty();
+
+  if (state.notionToken && notionAreaId) {
+    NotionAPI.archivePage(state.notionToken, notionAreaId);
+  }
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -948,7 +983,7 @@ async function toggleToday(topic) {
   topic.today = !topic.today;
   await save();
   render();
-  if (state.notionAutoSync && state.notionToken && state.notionDbId) {
+  if (state.notionAutoSync && state.notionToken) {
     syncTopicToNotion(topic);
   }
 }
@@ -1039,7 +1074,7 @@ async function updateStatus(topic, status) {
   topic.status = status;
   await save();
   render();
-  if (state.notionAutoSync && state.notionToken && state.notionDbId) {
+  if (state.notionAutoSync && state.notionToken) {
     syncTopicToNotion(topic);
   }
 }
@@ -1196,6 +1231,15 @@ function bindNotionEvents() {
   if (pushBtn) pushBtn.onclick = pushAllToNotion;
   const pullBtn = $("#notion-pull-all-btn");
   if (pullBtn) pullBtn.onclick = pullAllFromNotion;
+  const quickSyncBtn = $("#quick-sync-btn");
+  if (quickSyncBtn) {
+    quickSyncBtn.onclick = async () => {
+      quickSyncBtn.classList.add("spinning");
+      await autoSyncFromNotion();
+      setTimeout(() => quickSyncBtn.classList.remove("spinning"), 600);
+      showToast("✓ Notion ile eşitlendi", "success");
+    };
+  }
   const purgeBtn = $("#purge-demo-btn");
   if (purgeBtn) {
     purgeBtn.onclick = async () => {
@@ -1422,21 +1466,30 @@ async function pushAllToNotion() {
   setTimeout(() => progressWrap.classList.add("hidden"), 4000);
 }
 
-async function pullAllFromNotion() {
+async function syncFromNotionInternal({ silent = false } = {}) {
   if (!state.notionToken) {
-    alert("Önce Notion API Token girmelisin.");
+    if (!silent) alert("Önce Notion API Token girmelisin.");
     return;
   }
+  if (isSyncingNotion) return;
+  isSyncingNotion = true;
 
   const pullBtn = $("#notion-pull-all-btn");
+  const quickSyncBtn = $("#quick-sync-btn");
+  const statusDot = $("#notion-status-dot");
   const progressWrap = $("#notion-sync-progress");
   const progressText = $("#notion-sync-text");
   const progressBar = $("#notion-sync-bar");
 
-  pullBtn.disabled = true;
-  progressWrap.classList.remove("hidden");
-  progressBar.style.width = "15%";
-  progressText.textContent = "Notion Teamspace ve Konuları taranıyor...";
+  if (!silent) {
+    if (pullBtn) pullBtn.disabled = true;
+    if (progressWrap) progressWrap.classList.remove("hidden");
+    if (progressBar) progressBar.style.width = "15%";
+    if (progressText) progressText.textContent = "Notion Teamspace ve Konuları taranıyor...";
+  } else {
+    if (statusDot) statusDot.classList.add("syncing");
+    if (quickSyncBtn) quickSyncBtn.classList.add("spinning");
+  }
 
   try {
     await syncUnmappedCategoriesToNotion();
@@ -1444,8 +1497,10 @@ async function pullAllFromNotion() {
       state.notionToken,
       state.notionDbId,
       msg => {
-        progressText.textContent = msg;
-        progressBar.style.width = "60%";
+        if (!silent && progressText) {
+          progressText.textContent = msg;
+          if (progressBar) progressBar.style.width = "60%";
+        }
       }
     );
 
@@ -1530,14 +1585,30 @@ async function pullAllFromNotion() {
 
     await save();
     render();
-    progressBar.style.width = "100%";
-    progressText.textContent = `✓ Başarılı: ${areaCount} Teamspace/Alan senkronize edildi. (${addedCount} yeni konu, ${updatedCount} güncellendi)`;
-    setTimeout(() => progressWrap.classList.add("hidden"), 4000);
+    if (!silent) {
+      if (progressBar) progressBar.style.width = "100%";
+      if (progressText) progressText.textContent = `✓ Başarılı: ${areaCount} Teamspace/Alan senkronize edildi. (${addedCount} yeni konu, ${updatedCount} güncellendi)`;
+      setTimeout(() => progressWrap?.classList.add("hidden"), 4000);
+    }
   } catch (err) {
-    progressText.textContent = `✕ Hata: ${err.message}`;
+    console.warn("[NotMonk] Sync hatası:", err);
+    if (!silent && progressText) {
+      progressText.textContent = `✕ Hata: ${err.message}`;
+    }
   } finally {
-    pullBtn.disabled = false;
+    isSyncingNotion = false;
+    if (pullBtn) pullBtn.disabled = false;
+    if (statusDot) statusDot.classList.remove("syncing");
+    if (quickSyncBtn) quickSyncBtn.classList.remove("spinning");
   }
+}
+
+async function pullAllFromNotion() {
+  return syncFromNotionInternal({ silent: false });
+}
+
+async function autoSyncFromNotion() {
+  return syncFromNotionInternal({ silent: true });
 }
 
 init();
