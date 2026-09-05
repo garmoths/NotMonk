@@ -152,13 +152,19 @@ function goBackToModules() {
 
 function bindListEnhancements() {
   const reset = () => { state.page = 1; renderTable(); };
-  $("#search").oninput = e => { state.query = e.target.value.toLocaleLowerCase("tr"); reset(); };
-  $("#category-select").onchange = e => { state.category = e.target.value; reset(); savePreferences(); };
-  $("#status-filter").onchange = e => { state.status = e.target.value; reset(); savePreferences(); };
-  $("#sort-select").onchange = e => { state.sort = e.target.value; renderTable(); savePreferences(); };
-  $("#clear-filters").onclick = () => {
+  const searchInput = $("#search");
+  if (searchInput) searchInput.oninput = e => { state.query = e.target.value.toLocaleLowerCase("tr"); reset(); };
+  const catSel = $("#category-select");
+  if (catSel) catSel.onchange = e => { state.category = e.target.value; reset(); savePreferences(); };
+  const statusFilter = $("#status-filter");
+  if (statusFilter) statusFilter.onchange = e => { state.status = e.target.value; reset(); savePreferences(); };
+  const sortSel = $("#sort-select");
+  if (sortSel) sortSel.onchange = e => { state.sort = e.target.value; renderTable(); savePreferences(); };
+  const clearBtn = $("#clear-filters");
+  if (clearBtn) clearBtn.onclick = () => {
     state.category = "Tümü"; state.status = "all"; state.query = ""; state.page = 1;
-    $("#search").value = ""; syncControls(); renderTable(); savePreferences();
+    if (searchInput) searchInput.value = "";
+    syncControls(); renderTable(); savePreferences();
   };
 }
 
@@ -397,7 +403,6 @@ function renderModules() {
     const catTopics = state.topics.filter(t => t.category === cat);
     const total = catTopics.length;
     const done = catTopics.filter(t => t.status === "done").length;
-    const learning = catTopics.filter(t => t.status === "learning").length;
     const todayCount = catTopics.filter(t => t.today).length;
     const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -406,8 +411,8 @@ function renderModules() {
     if (done === total && total > 0) {
       statusText = "Tamamlandı";
       statusClass = "status-done";
-    } else if (learning > 0 || done > 0) {
-      statusText = "Devam Ediyor";
+    } else if (done > 0) {
+      statusText = `%${percent}`;
       statusClass = "status-learning";
     }
 
@@ -416,24 +421,20 @@ function renderModules() {
     card.onclick = () => openCategory(cat);
 
     card.innerHTML = `
-      <div>
+      <div class="card-top">
         <div class="card-head">
-          <span class="card-index">${String(idx + 1).padStart(2, "0")}</span>
+          <span class="card-index">${String(idx).padStart(2, "0")}</span>
           <span class="card-status-badge ${statusClass}">${statusText}</span>
         </div>
         <h2 class="card-title"></h2>
       </div>
-      <div>
-        <div class="card-stats">
-          <span>${done}/${total} konu</span>
-          <span>%${percent}</span>
-        </div>
+      <div class="card-bottom">
         <div class="card-progress-bar">
           <div class="card-progress-fill ${percent === 100 ? "done" : ""}" style="width: ${percent}%"></div>
         </div>
         <div class="card-footer">
-          <span class="card-pill">${total} konu</span>
-          ${todayCount > 0 ? `<span class="card-pill" title="Bugün çalışılacak">⭐ ${todayCount} odak</span>` : `<span class="card-pill">${learning > 0 ? `${learning} aktif` : "hazır"}</span>`}
+          <span class="card-count">${done}/${total} konu</span>
+          ${todayCount > 0 ? `<span class="card-today-badge">★ ${todayCount} bugün</span>` : `<span class="card-arrow">→</span>`}
         </div>
       </div>
     `;
@@ -446,8 +447,8 @@ function renderModules() {
   const addCard = document.createElement("div");
   addCard.className = "add-module-card";
   addCard.innerHTML = `
-    <span class="add-module-icon">＋</span>
-    <span class="add-module-text">Yeni Alan / Modül Ekle</span>
+    <span class="add-icon">＋</span>
+    <span>Yeni Alan Ekle</span>
   `;
   addCard.onclick = () => {
     openForm();

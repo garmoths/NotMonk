@@ -527,13 +527,13 @@ body[data-theme="pink"] .back-btn:hover {
 body[data-theme="pink"] .module-card {
   background: #f8c7da;
   border-color: #d995b2;
-  box-shadow: 0 4px 14px rgba(135, 25, 72, 0.08);
+  box-shadow: 0 2px 8px rgba(135, 25, 72, 0.06);
 }
 
 body[data-theme="pink"] .module-card:hover {
   background: #ffdeeb;
   border-color: #c86f94;
-  box-shadow: 0 8px 24px rgba(135, 25, 72, 0.16);
+  box-shadow: 0 4px 16px rgba(135, 25, 72, 0.12);
 }
 
 body[data-theme="pink"] .card-index {
@@ -550,13 +550,11 @@ body[data-theme="pink"] .card-status-badge.status-todo {
 body[data-theme="pink"] .card-status-badge.status-learning {
   background: #f1b5ce;
   color: #8c194b;
-  border-color: #c86f94;
 }
 
 body[data-theme="pink"] .card-status-badge.status-done {
   background: #d4edda;
   color: #155724;
-  border-color: #c3e6cb;
 }
 
 body[data-theme="pink"] .card-progress-bar {
@@ -571,14 +569,21 @@ body[data-theme="pink"] .card-progress-fill.done {
   background: #28a745;
 }
 
-body[data-theme="pink"] .card-footer {
-  border-top-color: #eab4ca;
+body[data-theme="pink"] .card-count {
+  color: #7a3556;
 }
 
-body[data-theme="pink"] .card-pill {
-  background: #ffeaf2;
-  border-color: #d995b2;
+body[data-theme="pink"] .card-today-badge {
+  background: #ffd3e4;
+  color: #8c194b;
+}
+
+body[data-theme="pink"] .card-arrow {
   color: #7a3556;
+}
+
+body[data-theme="pink"] .module-card:hover .card-arrow {
+  color: #4a1329;
 }
 
 body[data-theme="pink"] .add-module-card {
