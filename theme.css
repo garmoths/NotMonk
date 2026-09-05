@@ -424,37 +424,28 @@ body[data-theme="pink"] .empty {
   background: #f8c7da;
 }
 
-body[data-theme="pink"] .today-focus {
-  background: #f8c6da;
-  border-color: #d995b2;
+body[data-theme="pink"] .nav-tabs {
+  background: #f7cada;
+  border-color: #d98fac;
 }
 
-body[data-theme="pink"] .today-head {
-  border-color: #d995b2;
+body[data-theme="pink"] .nav-tab {
+  color: #7a3556;
 }
 
-body[data-theme="pink"] .today-badge {
-  color: #a91b58;
+body[data-theme="pink"] .nav-tab:hover {
+  color: #4a1730;
 }
 
-body[data-theme="pink"] .today-progress-badge {
-  background: #ffd3e4;
-  border-color: #ce7da0;
-  color: #642a46;
+body[data-theme="pink"] .nav-tab.active {
+  background: #ffd6e7;
+  color: #46152d;
+  box-shadow: 0 2px 6px rgba(104, 25, 61, 0.15);
 }
 
-body[data-theme="pink"] .today-item {
-  background: #ffeaf2;
-  border-color: #d995b2;
-}
-
-body[data-theme="pink"] .today-item:hover {
-  background: #ffdeeb;
-  border-color: #c86f94;
-}
-
-body[data-theme="pink"] .today-item-title {
-  color: #441329;
+body[data-theme="pink"] .tab-badge {
+  background: #f1b5ce;
+  color: #8c194b;
 }
 
 body[data-theme="pink"] .star-btn {
@@ -465,6 +456,7 @@ body[data-theme="pink"] .star-btn:hover,
 body[data-theme="pink"] .star-btn.active {
   color: #b51f60;
 }
+
 
 @media (max-width: 650px) {
   .theme-copy {

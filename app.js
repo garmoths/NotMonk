@@ -8,7 +8,8 @@ const DEFAULT_CATEGORIES = [...NOTMONK_CATEGORIES];
 const state = {
   topics: [], categories: [],
   category: "Tümü", status: "all", query: "", sort: "updatedAt-desc",
-  theme: "dark", page: 1, pageSize: 10, draggedId: null
+  theme: "dark", page: 1, pageSize: 10, draggedId: null,
+  activeTab: "all"
 };
 
 const $ = s => document.querySelector(s);
@@ -53,8 +54,10 @@ async function init() {
 function bindEvents() {
   $("#open-form").onclick = () => openForm();
   $("#empty-add").onclick = () => openForm();
-  const clearTodayBtn = $("#clear-today");
-  if (clearTodayBtn) clearTodayBtn.onclick = clearToday;
+  $("#tab-all").onclick = () => switchTab("all");
+  $("#tab-today").onclick = () => switchTab("today");
+  const switchToAllBtn = $("#switch-to-all-btn");
+  if (switchToAllBtn) switchToAllBtn.onclick = () => switchTab("all");
   $("#topic-form").onsubmit = saveForm;
   $("#delete-topic").onclick = deleteCurrent;
   $("#notes").oninput = e => { $("#note-count").textContent = e.target.value.length; markDirty(); };
@@ -65,6 +68,16 @@ function bindEvents() {
       e.preventDefault(); openForm();
     }
   });
+}
+
+function switchTab(tab) {
+  state.activeTab = tab;
+  $("#tab-all").classList.toggle("active", tab === "all");
+  $("#tab-today").classList.toggle("active", tab === "today");
+  $("#page-section-code").textContent = tab === "today" ? "BUGÜNÜN ODAĞI" : "ÖĞRENME TABLOSU";
+  $("#page-title").textContent = tab === "today" ? "Bugün Çalışılacaklar" : "Konular";
+  state.page = 1;
+  renderTable();
 }
 
 
@@ -254,99 +267,21 @@ async function removeCategory(category) {
 // ── Render ────────────────────────────────────────────────────────────────────
 function render() {
   renderStats();
-  renderToday();
   renderCategories();
   syncControls();
   renderTable();
 }
 
 function renderStats() {
-  const total = state.topics.length;
-  const active = state.topics.filter(t => t.status === "learning").length;
-  const done = state.topics.filter(t => t.status === "done").length;
-  $("#nav-total").textContent = total;
-  $("#nav-active").textContent = active;
-  $("#nav-done").textContent = done;
-  const progressVal = $("#progress-value");
-  if (progressVal) {
-    const p = total ? Math.round(done / total * 100) : 0;
-    progressVal.textContent = `${p}%`;
-    const progressBar = $("#progress-bar");
-    if (progressBar) progressBar.style.width = `${p}%`;
-    const doneCnt = $("#done-count");
-    if (doneCnt) doneCnt.textContent = `${done} öğrenildi`;
-    const remCnt = $("#remaining-count");
-    if (remCnt) remCnt.textContent = `${total - done} kaldı`;
-  }
+  const todayCount = state.topics.filter(t => t.today).length;
+  const badge = $("#today-count-badge");
+  if (badge) badge.textContent = todayCount;
 }
 
 async function toggleToday(topic) {
   topic.today = !topic.today;
   await save();
   render();
-}
-
-async function clearToday() {
-  state.topics.forEach(t => { t.today = false; });
-  await save();
-  render();
-}
-
-function renderToday() {
-  const container = $("#today-focus");
-  if (!container) return;
-  const todayTopics = state.topics.filter(t => t.today);
-  const list = $("#today-list");
-  if (!todayTopics.length) {
-    container.classList.add("hidden");
-    list.replaceChildren();
-    return;
-  }
-  container.classList.remove("hidden");
-  const doneCount = todayTopics.filter(t => t.status === "done").length;
-  const badge = $("#today-progress-badge");
-  if (badge) badge.textContent = `${doneCount}/${todayTopics.length} tamamlandı`;
-
-  list.replaceChildren(...todayTopics.map(topic => {
-    const item = document.createElement("div");
-    item.className = "today-item" + (topic.status === "done" ? " today-done" : "");
-
-    const main = document.createElement("div");
-    main.className = "today-item-main";
-
-    const star = document.createElement("span");
-    star.className = "today-star-icon";
-    star.textContent = "⭐";
-
-    const title = document.createElement("span");
-    title.className = "today-item-title";
-    title.textContent = topic.title;
-
-    const cat = document.createElement("span");
-    cat.className = "category-pill";
-    cat.textContent = topic.category;
-
-    main.append(star, title, cat);
-    main.onclick = () => openForm(topic);
-
-    const actions = document.createElement("div");
-    actions.className = "today-item-actions";
-    actions.append(statusButtons(topic));
-
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "today-remove-btn";
-    removeBtn.type = "button";
-    removeBtn.title = "Bugünün odağından çıkar";
-    removeBtn.textContent = "×";
-    removeBtn.onclick = e => {
-      e.stopPropagation();
-      toggleToday(topic);
-    };
-    actions.append(removeBtn);
-
-    item.append(main, actions);
-    return item;
-  }));
 }
 
 function renderCategories() {
@@ -365,6 +300,7 @@ function syncControls() {
 
 function getVisible() {
   return state.topics.filter(t =>
+    (state.activeTab !== "today" || t.today) &&
     (state.category === "Tümü" || t.category === state.category) &&
     (state.status === "all" || t.status === state.status) &&
     `${t.title} ${t.notes}`.toLocaleLowerCase("tr").includes(state.query)
@@ -380,17 +316,24 @@ function toggleSort(key) {
 }
 
 function renderTable() {
+  const isTodayTab = state.activeTab === "today";
+  const todayTopicsTotal = state.topics.filter(t => t.today).length;
   const visible = getVisible();
   const totalPages = Math.max(1, Math.ceil(visible.length / state.pageSize));
   state.page = Math.min(state.page, totalPages);
   const start = (state.page - 1) * state.pageSize;
   const pageTopics = visible.slice(start, start + state.pageSize);
-  const noTopics = state.topics.length === 0;
-  const noResults = !noTopics && visible.length === 0;
+
+  const isGlobalEmpty = !isTodayTab && state.topics.length === 0;
+  const isTodayEmpty = isTodayTab && todayTopicsTotal === 0;
+  const isNoResults = !isGlobalEmpty && !isTodayEmpty && visible.length === 0;
+
   $("#result-count").textContent = visible.length;
-  $("#empty-state").classList.toggle("hidden", !noTopics);
-  $("#no-results").classList.toggle("hidden", !noResults);
-  $("#table-view").classList.toggle("hidden", noTopics || noResults);
+  $("#empty-state").classList.toggle("hidden", !isGlobalEmpty);
+  const todayEmptyEl = $("#today-empty");
+  if (todayEmptyEl) todayEmptyEl.classList.toggle("hidden", !isTodayEmpty);
+  $("#no-results").classList.toggle("hidden", !isNoResults);
+  $("#table-view").classList.toggle("hidden", isGlobalEmpty || isTodayEmpty || isNoResults);
   $("#topic-table-body").replaceChildren(...pageTopics.map((topic, index) => createRow(topic, start + index)));
   renderPagination(visible.length, totalPages);
 }
