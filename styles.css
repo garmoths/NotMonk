@@ -1331,6 +1331,32 @@ tr.drag-over {
   gap: 8px;
 }
 
+.card-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-delete-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  opacity: 0.6;
+  transition: all 0.15s ease;
+}
+
+.card-delete-btn:hover {
+  opacity: 1;
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.25);
+  background: rgba(255, 107, 107, 0.12);
+}
+
 .card-avatar {
   display: inline-flex;
   align-items: center;

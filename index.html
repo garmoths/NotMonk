@@ -259,12 +259,12 @@
       
       <div class="notion-dialog-body">
         <div class="notion-guide-card">
-          <div class="guide-title">💡 30 Saniyede Nasıl Kurulur?</div>
+          <div class="guide-title">💡 Notion ile Nasıl Bağlanır? (Teamspace & Alanlar)</div>
           <ol class="guide-steps">
-            <li><a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> adresinden "New integration" oluşturup Token'ı al.</li>
-            <li>Notion'da bir Veritabanı (Database) oluştur veya aç.</li>
-            <li>Veritabanı sayfasında sağ üstteki <b>...</b> butonuna basıp <b>Connections &gt; NotMonk</b> seçerek yetki ver.</li>
-            <li>Veritabanı linkini veya ID'sini aşağıdaki alana yapıştır.</li>
+            <li><a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">notion.so/my-integrations</a> adresinden entegrasyon oluşturup <b>API Token</b>'ı al.</li>
+            <li><b>En Pratik Yol (Şemsiye Sayfa):</b> Notion'da <b>"NotMonk"</b> adında tek bir ana sayfa aç. İçine alanlarını alt sayfa olarak ekle (örn: 🛡️ Siber Güvenlik, 💻 Frontend).</li>
+            <li>En tepedeki "NotMonk" sayfasında sağ üstteki <b>... &gt; Connections &gt; NotMonk</b> seçerek yetki ver (bütün alt alanlar otomatik bağlanır!).</li>
+            <li>Aşağıdaki <b>"Notion'dan Konuları Çek"</b>e tıkla! Tüm alanların ve konuların anında listelenecektir.</li>
           </ol>
         </div>
 
@@ -275,8 +275,8 @@
           </label>
 
           <label class="notion-field-label">
-            <span>DATABASE ID VEYA VERİTABANI LİNKİ</span>
-            <input id="notion-db-id" type="text" placeholder="https://notion.so/... veya 32 haneli ID">
+            <span>NOTİON SAYFA / DATABASE LİNKİ VEYA ID (OPSİYONEL)</span>
+            <input id="notion-db-id" type="text" placeholder="Boş bırakabilirsin veya Notion ana sayfa linkini yapıştırabilirsin">
           </label>
 
           <div class="notion-checkbox-row">

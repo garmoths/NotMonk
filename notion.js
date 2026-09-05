@@ -60,34 +60,15 @@ const NotionAPI = {
         }
       }
 
-      // No child database found on this page -> automatically create one!
-      const createDbRes = await fetch(`${NOTION_BASE_URL}/databases`, {
-        method: "POST",
-        headers: this.getHeaders(token),
-        body: JSON.stringify({
-          parent: { type: "page_id", page_id: id },
-          title: [{ type: "text", text: { content: "NotMonk Konular & Notlar" } }],
-          properties: {
-            "Name": { title: {} },
-            "Kategori": { select: {} },
-            "Durum": { select: {} },
-            "Bugün": { checkbox: {} },
-            "Kaynak": { url: {} }
-          }
-        })
-      });
-
-      if (createDbRes.ok) {
-        const newDb = await createDbRes.json();
-        return {
-          databaseId: newDb.id.replace(/-/g, ""),
-          databaseTitle: "NotMonk Konular & Notlar (Otomatik Oluşturuldu)",
-          properties: newDb.properties || {}
-        };
-      } else {
-        const err = await createDbRes.json().catch(() => ({}));
-        throw new Error(`Sayfa içinde veritabanı oluşturulamadı: ${err.message || createDbRes.status}`);
-      }
+      // If no child database found, treat this page itself as the parent container page
+      const pageData = await pageRes.json().catch(() => ({}));
+      const pageTitle = this.extractTitle(pageData) || "Notion Sayfası";
+      return {
+        databaseId: id,
+        databaseTitle: pageTitle,
+        isPage: true,
+        properties: {}
+      };
     }
 
     const err = await dbRes.json().catch(() => ({}));
@@ -406,7 +387,7 @@ const NotionAPI = {
     return "todo";
   },
 
-  extractCategory(item, areasMap) {
+  extractCategory(item, areasMap, allItemsMap = null) {
     if (item && item.properties) {
       for (const key of Object.keys(item.properties)) {
         const prop = item.properties[key];
@@ -415,9 +396,19 @@ const NotionAPI = {
         }
       }
     }
-    const parentId = (item?.parent?.page_id || item?.parent?.database_id || "").replace(/-/g, "");
-    if (parentId && areasMap && areasMap.has(parentId)) {
-      return areasMap.get(parentId).title;
+    let currentParentId = (item?.parent?.page_id || item?.parent?.database_id || "").replace(/-/g, "");
+    let depth = 0;
+    while (currentParentId && depth < 6) {
+      if (areasMap && areasMap.has(currentParentId)) {
+        return areasMap.get(currentParentId).title;
+      }
+      if (allItemsMap && allItemsMap.has(currentParentId)) {
+        const parentItem = allItemsMap.get(currentParentId);
+        currentParentId = (parentItem?.parent?.page_id || parentItem?.parent?.database_id || "").replace(/-/g, "");
+        depth++;
+      } else {
+        break;
+      }
     }
     return "";
   },
@@ -554,10 +545,42 @@ const NotionAPI = {
       nextCursor = data.next_cursor;
     }
 
-    const allIds = new Set(allResults.map(r => r.id.replace(/-/g, "")));
-    const areas = [];
+    const { areas } = this.classifyWorkspaceHierarchy(allResults);
+    return areas;
+  },
 
+  classifyWorkspaceHierarchy(allResults) {
+    const allIds = new Set(allResults.map(r => r.id.replace(/-/g, "")));
+    const allItemsMap = new Map(allResults.map(r => [r.id.replace(/-/g, ""), r]));
+
+    // 1. Detect Umbrella Container Page
+    // Look for a page whose title is "NotMonk" or contains "NotMonk" (case-insensitive)
+    let umbrellaItem = null;
     for (const item of allResults) {
+      if (item.object === "page") {
+        const title = (this.extractTitle(item) || "").trim().toLowerCase();
+        const parentPageId = item.parent?.page_id ? item.parent.page_id.replace(/-/g, "") : null;
+        const isRoot = !parentPageId || !allIds.has(parentPageId);
+        if (isRoot && (title === "notmonk" || title.startsWith("notmonk ") || title.endsWith(" notmonk") || title.includes("notmonk workspace"))) {
+          umbrellaItem = item;
+          break;
+        }
+      }
+    }
+
+    const umbrellaId = umbrellaItem ? umbrellaItem.id.replace(/-/g, "") : null;
+    const areas = [];
+    const areasMap = new Map();
+    const candidateTopics = [];
+
+    // 2. Classify Areas
+    for (const item of allResults) {
+      const cleanId = item.id.replace(/-/g, "");
+      if (umbrellaId && cleanId === umbrellaId) {
+        // The umbrella container itself is not an area card
+        continue;
+      }
+
       const title = this.extractTitle(item);
       if (!title || !title.trim()) continue;
 
@@ -566,10 +589,19 @@ const NotionAPI = {
       const isWorkspaceParent = item.parent?.type === "workspace" || item.parent?.type === "teamspace";
       const parentPageId = item.parent?.page_id ? item.parent.page_id.replace(/-/g, "") : null;
       const isRootPage = item.object === "page" && (!parentPageId || !allIds.has(parentPageId));
+      const isDirectUmbrellaChild = Boolean(umbrellaId && parentPageId === umbrellaId);
 
-      if (isDatabase || isWorkspaceParent || isRootPage) {
-        areas.push({
-          id: item.id.replace(/-/g, ""),
+      // An item is an Area (Alan) if:
+      // A. It is a direct child of the NotMonk umbrella page, OR
+      // B. There is no umbrella page, and it is a root page / workspace item / database, OR
+      // C. There is an umbrella page, but this is a separate standalone root page / database
+      const isArea = isDirectUmbrellaChild ||
+        (!umbrellaId && (isDatabase || isWorkspaceParent || isRootPage)) ||
+        (umbrellaId && isRootPage && cleanId !== umbrellaId);
+
+      if (isArea) {
+        const areaObj = {
+          id: cleanId,
           rawId: item.id,
           title: title.trim(),
           type: item.object,
@@ -578,11 +610,40 @@ const NotionAPI = {
           iconUrl,
           url: item.url,
           parent: item.parent
+        };
+        areas.push(areaObj);
+        areasMap.set(cleanId, areaObj);
+      } else {
+        candidateTopics.push(item);
+      }
+    }
+
+    // 3. Classify Topics
+    const topics = [];
+    for (const item of candidateTopics) {
+      if (item.object === "page") {
+        const title = this.extractTitle(item);
+        const category = this.extractCategory(item, areasMap, allItemsMap) || "Genel";
+        const status = this.extractStatus(item);
+        const today = this.extractToday(item);
+        const resource = this.extractResource(item);
+
+        topics.push({
+          id: crypto.randomUUID(),
+          notionPageId: item.id,
+          notionUrl: item.url,
+          title: title || "İsimsiz Konu",
+          category,
+          status,
+          today,
+          resource,
+          notes: "",
+          updatedAt: new Date(item.last_edited_time || Date.now()).getTime()
         });
       }
     }
 
-    return areas;
+    return { areas, topics, areasMap, umbrellaId };
   },
 
   async fetchAllWorkspaceData(token, explicitDbId = null, onProgress = null) {
@@ -614,67 +675,9 @@ const NotionAPI = {
       nextCursor = data.next_cursor;
     }
 
-    const allIds = new Set(allResults.map(r => r.id.replace(/-/g, "")));
-    const areas = [];
-    const topics = [];
-    const areasMap = new Map();
+    const { areas, topics, areasMap, umbrellaId } = this.classifyWorkspaceHierarchy(allResults);
 
-    // 1. Identify Root Containers (Teamspaces / Parent Pages / Databases)
-    for (const item of allResults) {
-      const cleanId = item.id.replace(/-/g, "");
-      const title = this.extractTitle(item);
-      const { icon, iconType, iconUrl } = this.extractIcon(item);
-
-      const isDatabase = item.object === "database";
-      const isWorkspaceParent = item.parent?.type === "workspace" || item.parent?.type === "teamspace";
-      const parentPageId = item.parent?.page_id ? item.parent.page_id.replace(/-/g, "") : null;
-      const isRootPage = item.object === "page" && (!parentPageId || !allIds.has(parentPageId));
-
-      if (isDatabase || isWorkspaceParent || isRootPage) {
-        const areaObj = {
-          id: cleanId,
-          rawId: item.id,
-          title: title || "İsimsiz Alan",
-          type: item.object,
-          icon,
-          iconType,
-          iconUrl,
-          url: item.url,
-          parent: item.parent
-        };
-        areas.push(areaObj);
-        areasMap.set(cleanId, areaObj);
-      }
-    }
-
-    // 2. Identify Child Pages (Topics)
-    for (const item of allResults) {
-      const cleanId = item.id.replace(/-/g, "");
-      if (areasMap.has(cleanId)) continue; // Skip root areas
-
-      if (item.object === "page") {
-        const title = this.extractTitle(item);
-        const category = this.extractCategory(item, areasMap) || "Genel";
-        const status = this.extractStatus(item);
-        const today = this.extractToday(item);
-        const resource = this.extractResource(item);
-
-        topics.push({
-          id: crypto.randomUUID(),
-          notionPageId: item.id,
-          notionUrl: item.url,
-          title,
-          category,
-          status,
-          today,
-          resource,
-          notes: "",
-          updatedAt: new Date(item.last_edited_time || Date.now()).getTime()
-        });
-      }
-    }
-
-    // 3. Query explicit database if configured
+    // Query explicit database if configured
     if (explicitDbId) {
       try {
         const dbTopics = await this.queryDatabase(token, explicitDbId);
@@ -691,7 +694,7 @@ const NotionAPI = {
       }
     }
 
-    // 4. Fetch rich notes blocks for topics
+    // Fetch rich notes blocks for topics
     if (topics.length > 0 && onProgress) {
       onProgress(`Notlar çekiliyor (0/${topics.length})...`);
     }
@@ -710,7 +713,7 @@ const NotionAPI = {
       }
     }
 
-    return { areas, topics };
+    return { areas, topics, umbrellaId };
   },
 
   async createPage(token, rawParentId, topic, isDatabase = true, schemaProperties = {}) {
@@ -843,7 +846,40 @@ const NotionAPI = {
     };
   },
 
-  async syncTopic(token, defaultParentId, topic, schemaProperties = {}, areaMapping = {}) {
+  async createAreaPage(token, parentPageId, title, icon = "📁") {
+    if (!token || !parentPageId || !title) return null;
+    const cleanParentId = this.cleanDatabaseId(parentPageId);
+    try {
+      const res = await fetch(`${NOTION_BASE_URL}/pages`, {
+        method: "POST",
+        headers: this.getHeaders(token),
+        body: JSON.stringify({
+          parent: { page_id: cleanParentId },
+          properties: {
+            title: [{ type: "text", text: { content: title } }]
+          },
+          icon: { emoji: icon }
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.warn("Alan sayfası oluşturulamadı:", err);
+        return null;
+      }
+      const data = await res.json();
+      return {
+        id: data.id.replace(/-/g, ""),
+        rawId: data.id,
+        title,
+        url: data.url
+      };
+    } catch (e) {
+      console.warn("createAreaPage hatası:", e);
+      return null;
+    }
+  },
+
+  async syncTopic(token, defaultParentId, topic, schemaProperties = {}, areaMapping = {}, umbrellaParentId = null) {
     if (!token) return null;
 
     // Determine target parent (check if area is mapped to a specific Teamspace / Parent Page or Database)
@@ -853,7 +889,20 @@ const NotionAPI = {
     if (topic.category && areaMapping[topic.category]) {
       const mapped = areaMapping[topic.category];
       targetParentId = mapped.id || mapped;
-      isDatabase = mapped.type ? mapped.type === "database" : true;
+      isDatabase = mapped.type ? mapped.type === "database" : false;
+    } else if (topic.category && (umbrellaParentId || defaultParentId)) {
+      // Auto-create Area page under the umbrella parent!
+      try {
+        const parentForArea = umbrellaParentId || defaultParentId;
+        const newArea = await this.createAreaPage(token, parentForArea, topic.category);
+        if (newArea) {
+          areaMapping[topic.category] = { id: newArea.id, type: "page" };
+          targetParentId = newArea.id;
+          isDatabase = false;
+        }
+      } catch (e) {
+        console.warn("Otomatik Alan sayfası oluşturulamadı:", e);
+      }
     }
 
     if (!targetParentId) return null;
