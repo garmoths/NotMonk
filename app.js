@@ -92,8 +92,10 @@ async function init() {
 
   if (hasNotion) {
     // If Notion is configured or has areas, do NOT install the demo cybersecurity roadmap!
-    state.categories = (Array.isArray(saved.categories) ? saved.categories : []).filter(c => !isDefaultDemoCategory(c));
-    state.topics = (Array.isArray(saved.topics) ? saved.topics : []).filter(t => !isDefaultDemoCategory(t.category));
+    state.categories = (Array.isArray(saved.categories) ? saved.categories : [])
+      .filter(c => !isDefaultDemoCategory(c) && !c.toLowerCase().includes("notmonk"));
+    state.topics = (Array.isArray(saved.topics) ? saved.topics : [])
+      .filter(t => !isDefaultDemoCategory(t.category) && !t.category.toLowerCase().includes("notmonk"));
   } else {
     const installRoadmap = saved.preferences?.roadmapVersion !== ROADMAP_VERSION;
     state.topics = (installRoadmap ? starterTopics : (Array.isArray(saved.topics) ? saved.topics : starterTopics))
@@ -101,7 +103,11 @@ async function init() {
     state.categories = installRoadmap ? [...DEFAULT_CATEGORIES] : (Array.isArray(saved.categories) ? saved.categories : [...DEFAULT_CATEGORIES]);
   }
 
-  state.topics.forEach(t => { if (!state.categories.includes(t.category)) state.categories.push(t.category); });
+  state.topics.forEach(t => {
+    if (!t.category.toLowerCase().includes("notmonk") && !state.categories.includes(t.category)) {
+      state.categories.push(t.category);
+    }
+  });
   Object.assign(state, saved.preferences || {});
   state.activeTab = "modules";
   state.selectedCategory = null;
@@ -756,7 +762,21 @@ function renderModules() {
   if (!container) return;
   container.replaceChildren();
 
-  state.categories.forEach((cat, idx) => {
+  // Filter out any notmonk entry
+  const activeCategories = state.categories.filter(c => !c.toLowerCase().includes("notmonk"));
+
+  if (activeCategories.length === 0) {
+    const emptyNotice = document.createElement("div");
+    emptyNotice.className = "empty-modules-notice";
+    emptyNotice.innerHTML = `
+      <div class="empty-notice-icon">📂</div>
+      <h3>Henüz bir çalışma alanı açılmadı</h3>
+      <p>Notion'daki <b>NotMonk</b> sayfana girip istediğin alanları (örn: <b>/page Siber Güvenlik</b>) alt sayfa olarak ekle ve ardından <b>"Notion'dan Konuları Çek"</b>e tıkla! Veya doğrudan aşağıdaki butondan yeni bir alan oluşturabilirsin.</p>
+    `;
+    container.append(emptyNotice);
+  }
+
+  activeCategories.forEach((cat, idx) => {
     const catTopics = state.topics.filter(t => t.category === cat);
     const total = catTopics.length;
     const done = catTopics.filter(t => t.status === "done").length;
@@ -1139,7 +1159,7 @@ async function testNotionConnection() {
 
     if (discoveredAreas && discoveredAreas.length > 0) {
       discoveredAreas.forEach(area => {
-        if (!state.categories.includes(area.title)) {
+        if (!area.title.toLowerCase().includes("notmonk") && !state.categories.includes(area.title)) {
           state.categories.push(area.title);
         }
         state.areaMapping[area.title] = { id: area.id, type: area.type };
@@ -1152,6 +1172,7 @@ async function testNotionConnection() {
           };
         }
       });
+      state.categories = state.categories.filter(c => !c.toLowerCase().includes("notmonk"));
       await save();
       renderModules();
     }
@@ -1332,10 +1353,14 @@ async function pullAllFromNotion() {
 
     if (umbrellaId) {
       state.umbrellaPageId = umbrellaId;
-      state.categories = state.categories.filter(c => c.toLowerCase() !== "notmonk");
-      delete state.areaMapping["NotMonk"];
-      delete state.categoryMetadata["NotMonk"];
     }
+    // Always purge any notmonk entry
+    state.categories = state.categories.filter(c => !c.toLowerCase().includes("notmonk"));
+    state.topics = state.topics.filter(t => !t.category.toLowerCase().includes("notmonk"));
+    delete state.areaMapping["NotMonk"];
+    delete state.areaMapping["Notmonk"];
+    delete state.categoryMetadata["NotMonk"];
+    delete state.categoryMetadata["Notmonk"];
 
     const isDefaultDemoCategory = cat => typeof NOTMONK_CATEGORIES !== "undefined" && NOTMONK_CATEGORIES.includes(cat);
     state.categories = state.categories.filter(c => !isDefaultDemoCategory(c));
@@ -1345,7 +1370,7 @@ async function pullAllFromNotion() {
     let areaCount = 0;
     if (areas && areas.length > 0) {
       areas.forEach(area => {
-        if (!state.categories.includes(area.title)) {
+        if (!area.title.toLowerCase().includes("notmonk") && !state.categories.includes(area.title)) {
           state.categories.push(area.title);
         }
         state.areaMapping[area.title] = { id: area.id, type: area.type };
