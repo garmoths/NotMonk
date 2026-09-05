@@ -549,26 +549,29 @@ const NotionAPI = {
     return areas;
   },
 
-  classifyWorkspaceHierarchy(allResults) {
+  classifyWorkspaceHierarchy(allResults, explicitParentId = null) {
     const allIds = new Set(allResults.map(r => r.id.replace(/-/g, "")));
     const allItemsMap = new Map(allResults.map(r => [r.id.replace(/-/g, ""), r]));
 
-    // 1. Detect Umbrella Container Page
-    // Look for a page whose title is "NotMonk" or contains "NotMonk" (case-insensitive)
-    let umbrellaItem = null;
-    for (const item of allResults) {
-      if (item.object === "page") {
-        const title = (this.extractTitle(item) || "").trim().toLowerCase();
-        const parentPageId = item.parent?.page_id ? item.parent.page_id.replace(/-/g, "") : null;
-        const isRoot = !parentPageId || !allIds.has(parentPageId);
-        if (isRoot && (title === "notmonk" || title.startsWith("notmonk ") || title.endsWith(" notmonk") || title.includes("notmonk workspace"))) {
-          umbrellaItem = item;
-          break;
+    let umbrellaId = explicitParentId ? this.cleanDatabaseId(explicitParentId) : null;
+    let umbrellaItem = umbrellaId ? allItemsMap.get(umbrellaId) : null;
+
+    if (!umbrellaId) {
+      // 1. Detect Umbrella Container Page
+      // Look for a page whose title is "NotMonk" or contains "NotMonk" (case-insensitive)
+      for (const item of allResults) {
+        if (item.object === "page") {
+          const title = (this.extractTitle(item) || "").trim().toLowerCase();
+          const parentPageId = item.parent?.page_id ? item.parent.page_id.replace(/-/g, "") : null;
+          const isRoot = !parentPageId || !allIds.has(parentPageId);
+          if (isRoot && (title === "notmonk" || title.startsWith("notmonk ") || title.endsWith(" notmonk") || title.includes("notmonk workspace"))) {
+            umbrellaItem = item;
+            umbrellaId = item.id.replace(/-/g, "");
+            break;
+          }
         }
       }
     }
-
-    const umbrellaId = umbrellaItem ? umbrellaItem.id.replace(/-/g, "") : null;
     const areas = [];
     const areasMap = new Map();
     const candidateTopics = [];
@@ -675,7 +678,7 @@ const NotionAPI = {
       nextCursor = data.next_cursor;
     }
 
-    const { areas, topics, areasMap, umbrellaId } = this.classifyWorkspaceHierarchy(allResults);
+    const { areas, topics, areasMap, umbrellaId } = this.classifyWorkspaceHierarchy(allResults, explicitDbId);
 
     // Query explicit database if configured
     if (explicitDbId) {
