@@ -155,7 +155,7 @@ body[data-theme="pink"] .primary {
 
 body[data-theme="pink"] .primary:hover {
   background: #c2256a;
-  box-shadow: 0 4px 16px rgba(217, 47, 120, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
 body[data-theme="pink"] .secondary {
@@ -192,9 +192,16 @@ body[data-theme="pink"] .theme-toggle.active .theme-icon {
 
 body[data-theme="pink"] .section-code,
 body[data-theme="pink"] .eyebrow,
+body[data-theme="pink"] .clear-filters-link,
 body[data-theme="pink"] #clear-filters,
 body[data-theme="pink"] .field-label-row button {
   color: #b51f60;
+}
+
+body[data-theme="pink"] .clear-filters-link:hover,
+body[data-theme="pink"] #clear-filters:hover {
+  color: #7d1040;
+  background: rgba(217, 47, 120, 0.12);
 }
 
 body[data-theme="pink"] .result-line {
