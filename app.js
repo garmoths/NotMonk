@@ -53,6 +53,8 @@ async function init() {
 function bindEvents() {
   $("#open-form").onclick = () => openForm();
   $("#empty-add").onclick = () => openForm();
+  const clearTodayBtn = $("#clear-today");
+  if (clearTodayBtn) clearTodayBtn.onclick = clearToday;
   $("#topic-form").onsubmit = saveForm;
   $("#delete-topic").onclick = deleteCurrent;
   $("#notes").oninput = e => { $("#note-count").textContent = e.target.value.length; markDirty(); };
@@ -64,6 +66,7 @@ function bindEvents() {
     }
   });
 }
+
 
 function bindListEnhancements() {
   const reset = () => { state.page = 1; renderTable(); };
@@ -249,7 +252,13 @@ async function removeCategory(category) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
-function render() { renderStats(); renderCategories(); syncControls(); renderTable(); }
+function render() {
+  renderStats();
+  renderToday();
+  renderCategories();
+  syncControls();
+  renderTable();
+}
 
 function renderStats() {
   const total = state.topics.length;
@@ -271,6 +280,74 @@ function renderStats() {
   }
 }
 
+async function toggleToday(topic) {
+  topic.today = !topic.today;
+  await save();
+  render();
+}
+
+async function clearToday() {
+  state.topics.forEach(t => { t.today = false; });
+  await save();
+  render();
+}
+
+function renderToday() {
+  const container = $("#today-focus");
+  if (!container) return;
+  const todayTopics = state.topics.filter(t => t.today);
+  const list = $("#today-list");
+  if (!todayTopics.length) {
+    container.classList.add("hidden");
+    list.replaceChildren();
+    return;
+  }
+  container.classList.remove("hidden");
+  const doneCount = todayTopics.filter(t => t.status === "done").length;
+  const badge = $("#today-progress-badge");
+  if (badge) badge.textContent = `${doneCount}/${todayTopics.length} tamamlandı`;
+
+  list.replaceChildren(...todayTopics.map(topic => {
+    const item = document.createElement("div");
+    item.className = "today-item" + (topic.status === "done" ? " today-done" : "");
+
+    const main = document.createElement("div");
+    main.className = "today-item-main";
+
+    const star = document.createElement("span");
+    star.className = "today-star-icon";
+    star.textContent = "⭐";
+
+    const title = document.createElement("span");
+    title.className = "today-item-title";
+    title.textContent = topic.title;
+
+    const cat = document.createElement("span");
+    cat.className = "category-pill";
+    cat.textContent = topic.category;
+
+    main.append(star, title, cat);
+    main.onclick = () => openForm(topic);
+
+    const actions = document.createElement("div");
+    actions.className = "today-item-actions";
+    actions.append(statusButtons(topic));
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "today-remove-btn";
+    removeBtn.type = "button";
+    removeBtn.title = "Bugünün odağından çıkar";
+    removeBtn.textContent = "×";
+    removeBtn.onclick = e => {
+      e.stopPropagation();
+      toggleToday(topic);
+    };
+    actions.append(removeBtn);
+
+    item.append(main, actions);
+    return item;
+  }));
+}
 
 function renderCategories() {
   const select = $("#category-select"), current = state.category;
@@ -346,6 +423,18 @@ function createRow(topic, index) {
 
   const titleWrap = document.createElement("div");
   titleWrap.className = "title-wrap";
+
+  const starBtn = document.createElement("button");
+  starBtn.type = "button";
+  starBtn.className = "star-btn" + (topic.today ? " active" : "");
+  starBtn.title = topic.today ? "Bugünün odağından çıkar" : "Bugünün odağına ekle";
+  starBtn.textContent = topic.today ? "★" : "☆";
+  starBtn.onclick = e => {
+    e.stopPropagation();
+    toggleToday(topic);
+  };
+  titleWrap.append(starBtn);
+
   const titleSpan = document.createElement("span");
   titleSpan.textContent = topic.title;
   titleWrap.append(titleSpan);
@@ -382,6 +471,7 @@ function createRow(topic, index) {
   tr.ondrop = e => { e.preventDefault(); e.stopPropagation(); tr.classList.remove("drag-over"); moveTopic(state.draggedId, topic.id); };
   return tr;
 }
+
 
 
 async function moveTopic(sourceId, targetId) {
