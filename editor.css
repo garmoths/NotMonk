@@ -149,6 +149,8 @@
   letter-spacing: 0.08em;
 }
 
+.parent-topic-field small { margin-top: 6px; color: var(--muted); font: 500 11px/1.4 system-ui; letter-spacing: 0; text-transform: none; }
+
 .topic-sidebar input,
 .topic-sidebar select {
   width: 100%;
@@ -1252,4 +1254,129 @@ pre.terminal-block code:empty::before {
     bottom: 0 !important;
     z-index: 50 !important;
   }
+}
+
+/* Document canvas: keep topic data together above the writing surface. */
+.topic-page { --document-width: 820px; border-radius: 12px; background: var(--panel); }
+.topic-page .editor-header { padding: 12px 22px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.topic-page .editor-header h2 { font-size: 13px; font-weight: 500; color: var(--muted); }
+.topic-page .editor-header .eyebrow { font: 12px/1.5 system-ui; letter-spacing: 0; color: var(--muted); margin-bottom: 2px; }
+.topic-page .editor-header-actions { gap: 12px; }
+.topic-page .editor-layout { display: block; overflow-y: auto; height: auto; padding-bottom: 60px; }
+.topic-page .editor-resizer { display: none; }
+.topic-page .topic-sidebar { width: min(var(--document-width), calc(100% - 64px)); height: auto; overflow: visible; margin: 48px auto 18px; padding: 0; background: transparent; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; border: 0; }
+.topic-page .document-title { grid-column: 1 / -1; margin-bottom: 12px; }
+.topic-page #title { font: 700 clamp(28px, 4vw, 42px)/1.25 system-ui; letter-spacing: -1.2px; background: transparent; border: 0; border-radius: 0; padding: 0 0 8px; box-shadow: none; height: auto; color: var(--text); }
+.topic-page #title::placeholder { color: var(--muted); opacity: .6; }
+.topic-page .topic-sidebar label, .topic-page .field-label-row, .topic-page .editor-status > span { font-size: 11px; letter-spacing: .02em; color: var(--muted); }
+.topic-page .topic-sidebar input:not(#title), .topic-page .topic-sidebar select { background: transparent; border: 1px solid var(--line); padding: 8px 10px; border-radius: 6px; }
+.topic-page .editor-status { grid-column: 1 / -1; padding: 0; margin: 0; background: transparent; border: 0; }
+.topic-page .status-buttons { display: flex; gap: 8px; margin-top: 8px; }
+.topic-page .editor-status .status-button { width: auto; padding: 6px 12px; }
+.topic-page .notes-editor { width: min(var(--document-width), calc(100% - 64px)); margin: auto; height: auto; min-height: 340px; overflow: visible; background: transparent; }
+.topic-page .notes-toolbar { padding: 12px 0; height: auto; background: transparent; border-bottom: 0; flex-wrap: wrap; letter-spacing: 0; }
+.topic-page .editor-content-wrapper { display: block; height: auto; overflow: visible; }
+.topic-page .rich-notes-area { overflow: visible; min-height: 300px; height: auto; padding: 12px 0 80px; font-size: 16px; line-height: 1.8; background: transparent; }
+.topic-page .rich-notes-area > p { margin: 4px 0 10px; }
+.topic-page .editor-footer { padding: 12px 22px; background: var(--panel); border-top: 1px solid var(--line); }
+.topic-page .editor-footer button { font-size: 12px; border-radius: 6px; }
+.document-tool, .page-appearance summary { cursor: pointer; font: 12px/1.5 system-ui; color: var(--muted); padding: 6px 10px; border: 0; background: transparent; border-radius: 5px; }
+.document-tool:hover, .page-appearance summary:hover { background: var(--line); color: var(--text); }
+.page-appearance { position: relative; }
+.page-appearance summary { list-style: none; }
+.page-appearance summary::-webkit-details-marker { display: none; }
+.appearance-panel { position: absolute; right: 0; top: 36px; width: 240px; z-index: 100; border: 1px solid var(--line2); border-radius: 10px; padding: 18px; background: var(--panel); box-shadow: 0 12px 35px #0005; display: grid; gap: 16px; font: 13px/1.4 system-ui; }
+.appearance-panel label { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.appearance-panel input { width: auto; }
+.appearance-panel select { max-width: 130px; padding: 6px; background: var(--panel); color: var(--text); border: 1px solid var(--line2); border-radius: 5px; }
+.document-cover { display: none; height: 150px; }
+[data-cover="sand"] .document-cover { display: block; background: linear-gradient(120deg,#ded3bd,#a48d73); }
+[data-cover="sky"] .document-cover { display: block; background: linear-gradient(120deg,#a2b9c8,#45657c); }
+[data-cover="rose"] .document-cover { display: block; background: linear-gradient(120deg,#e8c9c1,#ac758a); }
+.topic-page.document-wide { --document-width: 1120px; }
+.topic-page[data-font="serif"] .rich-notes-area { font-family: Georgia, serif; }
+.topic-page[data-font="mono"] .rich-notes-area { font-family: ui-monospace, monospace; }
+.topic-page.document-small .rich-notes-area { font-size: 14px; }
+.image-paste-pending { color: var(--muted); font-size: 13px; }
+.topic-page .image-actions-bar:focus-within { opacity: 1; visibility: visible; }
+.topic-page :is(button, summary, select, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media(max-width: 640px) {
+  .topic-page .topic-sidebar { grid-template-columns: 1fr; margin-top: 28px; }
+  .topic-page .topic-sidebar, .topic-page .notes-editor { width: calc(100% - 36px); }
+  .topic-page .editor-header { padding: 10px 12px; }
+  .topic-page .editor-header-actions { gap: 4px; }
+  .topic-page #save-hint { display: none; }
+  .topic-page .editor-footer { padding: 10px; gap: 6px; }
+  .topic-page .editor-footer button { padding: 8px; }
+  .topic-page .status-buttons { flex-wrap: wrap; }
+}
+@media(max-width: 640px) {
+  .topic-page .editor-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; }
+  .topic-page .editor-footer .footer-spacer { display: none; }
+  .topic-page .editor-footer #delete-topic { margin-right: auto; }
+  .topic-page .editor-footer button { min-width: 0; white-space: normal; }
+}
+.topic-page .editor-header-actions { gap: 4px; }
+.topic-page .editor-header-actions > :is(button,a), .topic-page .page-appearance summary { min-width: 32px; height: 32px; padding: 7px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 5px; background: transparent; color: var(--muted); box-shadow: none; transform: none; }
+.topic-page .editor-header-actions > :is(button,a):hover, .topic-page .page-appearance summary:hover { background: var(--line); color: var(--text); }
+.topic-page .editor-notion-actions { display: inline-flex; align-items: center; gap: 4px; }
+.topic-page .editor-notion-sync { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); border-radius: 7px; background: color-mix(in srgb, var(--accent) 16%, var(--panel)); color: var(--text); font: 600 12px/1 system-ui; cursor: pointer; transition: background .15s ease, border-color .15s ease, opacity .15s ease; }
+.topic-page .editor-notion-sync:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 24%, var(--panel)); }
+.topic-page .editor-notion-sync.is-linked { border-color: var(--line2); background: transparent; color: var(--text); }
+.topic-page .editor-notion-sync:disabled { cursor: wait; opacity: .65; }
+.topic-page .editor-notion-sync.is-working .ui-icon { animation: editor-sync-spin .85s linear infinite; }
+.topic-page .editor-notion-sync .ui-icon { width: 16px; height: 16px; }
+@keyframes editor-sync-spin { to { transform: rotate(360deg); } }
+.topic-page .editor-action-divider { width: 1px; height: 20px; margin: 0 3px; background: var(--line); }
+.topic-page #editor-notion-link { width: 32px; min-width: 32px; height: 32px; padding: 0; margin: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
+.topic-page #editor-notion-link:hover { background: var(--line); color: var(--text); }
+.topic-page #editor-notion-link.hidden { display: none; }
+.topic-page #save-hint { min-width: 0; font: 11px system-ui; color: var(--muted); margin-right: 10px; white-space: nowrap; }
+.topic-page .notes-toolbar { justify-content: flex-end; padding: 0; min-height: 18px; opacity: .65; }
+.topic-page .notes-toolbar-meta { font: 11px system-ui; }
+.topic-page .topic-sidebar :is(label,.field-label-row,.editor-status > span) { font-family: system-ui; font-weight: 500; }
+.topic-page .editor-status .status-button { font-family: system-ui; box-shadow: none; }
+@media(max-width:760px) {
+  .topic-page .editor-notion-sync { width: 34px; padding: 0; justify-content: center; }
+  .topic-page .editor-notion-sync span, .topic-page .editor-action-divider { display: none; }
+}
+.slash-menu { position: absolute; z-index: 120; width: 238px; padding: 6px; border: 1px solid var(--line2); border-radius: 9px; background: var(--panel); box-shadow: 0 10px 35px #0005; }
+.slash-menu[hidden] { display: none; }
+.slash-menu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px; color: var(--text); background: transparent; border: 0; border-radius: 5px; text-align: left; font: 13px system-ui; }
+.slash-menu button.selected, .slash-menu button:hover { background: var(--line); }
+.slash-menu button span { width: 28px; color: var(--muted); text-align: center; font: 14px ui-monospace,monospace; }
+#save-hint { min-height: 16px; }
+
+/* Persistent editor inside an area's right pane. */
+.topic-page.inline-document {
+  position: relative;
+  inset: auto;
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  min-height: max(920px, calc(100vh - 150px));
+  max-width: none;
+  max-height: none !important;
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0 !important;
+  box-shadow: none;
+  background: var(--panel);
+}
+.topic-page.inline-document::backdrop { display: none; }
+.topic-page.inline-document form { min-height: 100%; height: auto; overflow: visible; }
+.topic-page.inline-document .editor-header { position: sticky; top: 0; z-index: 70; }
+.topic-page.inline-document .editor-layout { flex: 0 0 auto; min-height: calc(100% - 118px); overflow: visible; }
+.topic-page.inline-document .editor-footer { position: sticky; bottom: 0; }
+.topic-page.inline-document #toggle-editor-expand { display: none; }
+.topic-page.inline-document #close-dialog { display: none; }
+.topic-page.inline-document .editor-footer { min-height: 0; padding: 8px 22px; justify-content: flex-start; border-top: 0; background: transparent; box-shadow: none; }
+.topic-page.inline-document .editor-footer :is(.footer-spacer, .cancel-button, .save-button) { display: none; }
+.topic-page.inline-document .rich-notes-area { min-height: 640px; padding-bottom: 160px; }
+.topic-page.inline-document .rich-notes-area:empty::before { display: block; padding-top: 4px; font-size: 15px; }
+
+@media (max-width: 860px) {
+  .topic-page.inline-document { height: 100% !important; min-height: 70vh; }
 }

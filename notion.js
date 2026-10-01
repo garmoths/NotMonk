@@ -3,6 +3,52 @@ const NOTION_API_VERSION = "2022-06-28";
 const NOTION_BASE_URL = "https://api.notion.com/v1";
 
 const NotionAPI = {
+  async request(url, options = {}) {
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(url, { ...options, signal: AbortSignal.timeout(30000) });
+      if (res.status !== 429 || attempt >= 4) return res;
+      const seconds = Number(res.headers.get("Retry-After")) || 1;
+      await new Promise(resolve => setTimeout(resolve, Math.max(1, seconds) * 1000));
+    }
+  },
+
+  async checked(url, options) {
+    const res = await this.request(url, options);
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.message || `Notion API hatası: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async listBlocks(token, pageId) {
+    const blocks = [];
+    let cursor;
+    do {
+      const data = await this.checked(`${NOTION_BASE_URL}/blocks/${this.cleanDatabaseId(pageId)}/children?page_size=100${cursor ? '&start_cursor=' + encodeURIComponent(cursor) : ''}`, { headers: this.getHeaders(token) });
+      blocks.push(...(data.results || []));
+      cursor = data.has_more ? data.next_cursor : null;
+      if (data.has_more && !cursor) throw new Error("Notion sayfalama yanıtı eksik.");
+    } while (cursor);
+    return blocks;
+  },
+
+  textSpans(value) {
+    const text = String(value || "");
+    return Array.from({ length: Math.max(1, Math.ceil(text.length / 2000)) }, (_, i) => ({ type: "text", text: { content: text.slice(i * 2000, (i + 1) * 2000) } }));
+  },
+
+  metadataBlock(topic) {
+    return { object: "block", type: "callout", callout: { icon: { type: "emoji", emoji: "📌" }, rich_text: this.textSpans(`Durum: ${{todo: "Başlamadım", learning: "Öğreniyorum", done: "Öğrendim"}[topic.status] || "Başlamadım"}  |  Alan: ${topic.category || "Genel"}\nBugün: ${topic.today ? "Evet" : "Hayır"}\nKaynak: ${topic.resource || ""}`) } };
+  },
+
+  async readMetadata(token, pageId) {
+    const blocks = await this.listBlocks(token, pageId);
+    const text = blocks.filter(b => b.type === "callout").map(b => (b.callout.rich_text || []).map(t => t.plain_text || t.text?.content || "").join("")).find(t => t.startsWith("Durum:") && t.includes("Alan:"));
+    if (!text) return {};
+    return { status: text.includes("Öğrendim") ? "done" : text.includes("Öğreniyorum") ? "learning" : "todo", today: text.includes("Bugün: Evet"), resource: text.match(/Kaynak: ([^\n]*)/)?.[1] || "" };
+  },
+
   getHeaders(token) {
     return {
       "Authorization": `Bearer ${token.trim()}`,
@@ -32,7 +78,7 @@ const NotionAPI = {
     if (!token || !id) return id;
 
     // 1. First test if it's already a database
-    const dbRes = await fetch(`${NOTION_BASE_URL}/databases/${id}`, {
+    const dbRes = await this.request(`${NOTION_BASE_URL}/databases/${id}`, {
       method: "GET",
       headers: this.getHeaders(token)
     });
@@ -47,14 +93,14 @@ const NotionAPI = {
     }
 
     // 2. If it's not a database, check if it's a page
-    const pageRes = await fetch(`${NOTION_BASE_URL}/pages/${id}`, {
+    const pageRes = await this.request(`${NOTION_BASE_URL}/pages/${id}`, {
       method: "GET",
       headers: this.getHeaders(token)
     });
 
     if (pageRes.ok) {
       // Look for an existing child database inside this page
-      const blocksRes = await fetch(`${NOTION_BASE_URL}/blocks/${id}/children?page_size=50`, {
+      const blocksRes = await this.request(`${NOTION_BASE_URL}/blocks/${id}/children?page_size=50`, {
         method: "GET",
         headers: this.getHeaders(token)
       });
@@ -88,7 +134,7 @@ const NotionAPI = {
     if (!token) throw new Error("Notion API anahtarı (Token) eksik.");
     if (!rawDatabaseId) {
       // User is syncing Teamspaces directly without a single database ID
-      const userRes = await fetch(`${NOTION_BASE_URL}/users/me`, {
+      const userRes = await this.request(`${NOTION_BASE_URL}/users/me`, {
         method: "GET",
         headers: this.getHeaders(token)
       });
@@ -111,6 +157,7 @@ const NotionAPI = {
       success: true,
       databaseId: res.databaseId,
       databaseTitle: res.databaseTitle,
+      isPage: Boolean(res.isPage),
       properties: res.properties || {}
     };
   },
@@ -166,6 +213,13 @@ const NotionAPI = {
       };
     }
 
+    for (const key of Object.keys(props)) {
+      if (!schemaProperties[key] || schemaProperties[key].type !== Object.keys(props[key])[0]) delete props[key];
+    }
+    for (const [key, prop] of Object.entries(schemaProperties)) {
+      if (prop.type === "url" && /^(kaynak|resource|link)$/i.test(key) && !topic.resource) props[key] = { url: null };
+      if (prop.type === "select" && /^(kategori|category|alan)$/i.test(key) && !topic.category) props[key] = { select: null };
+    }
     return props;
   },
 
@@ -176,10 +230,10 @@ const NotionAPI = {
       if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent;
         if (text) {
-          spans.push({
+          for (const chunk of this.textSpans(text)) spans.push({
             type: "text",
             text: {
-              content: text.slice(0, 2000),
+              content: chunk.text.content,
               link: annotations.link ? { url: annotations.link } : null
             },
             annotations: {
@@ -207,25 +261,108 @@ const NotionAPI = {
     };
 
     walk(container);
-    return spans.length > 0 ? spans.slice(0, 50) : [{ type: "text", text: { content: (container.textContent || "").slice(0, 2000) } }];
+    return spans.length > 0 ? spans : this.textSpans((container.textContent || ""));
   },
 
   buildChildrenBlocks(notes) {
     if (!notes || !notes.trim()) return [];
 
-    // Plain text fallback
+    // Plain text / Markdown fallback parser: generates native Notion to_do, callout and heading blocks
     if (!/<[a-z][\s\S]*>/i.test(notes)) {
-      const paragraphs = notes.split(/\n\n+/).filter(Boolean);
-      return paragraphs.map(p => ({
-        object: "block",
-        type: "paragraph",
-        paragraph: {
-          rich_text: [{
-            type: "text",
-            text: { content: p.slice(0, 2000) }
-          }]
+      const lines = notes.split("\n");
+      const blocks = [];
+      let currentParagraph = [];
+
+      const flushParagraph = () => {
+        if (currentParagraph.length > 0) {
+          const text = currentParagraph.join("\n").trim();
+          if (text) {
+            blocks.push({
+              object: "block",
+              type: "paragraph",
+              paragraph: { rich_text: this.textSpans(text) }
+            });
+          }
+          currentParagraph = [];
         }
-      }));
+      };
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          flushParagraph();
+          continue;
+        }
+
+        // To-Do checklist item: [ ] or [x]
+        const todoMatch = trimmed.match(/^\[([ xX])\]\s*(.+)$/);
+        if (todoMatch) {
+          flushParagraph();
+          blocks.push({
+            object: "block",
+            type: "to_do",
+            to_do: {
+              rich_text: this.textSpans(todoMatch[2]),
+              checked: todoMatch[1].toLowerCase() === "x"
+            }
+          });
+          continue;
+        }
+
+        // Bullet point: • or -
+        const bulletMatch = trimmed.match(/^[•\-]\s*(.+)$/);
+        if (bulletMatch) {
+          flushParagraph();
+          blocks.push({
+            object: "block",
+            type: "bulleted_list_item",
+            bulleted_list_item: {
+              rich_text: this.textSpans(bulletMatch[1])
+            }
+          });
+          continue;
+        }
+
+        // Callout sections: 🎯 HEDEF, 🏁 ÇIKIŞ KRİTERİ, 💼 KARİYER EŞİĞİ
+        if (trimmed.startsWith("🎯 HEDEF") || trimmed.startsWith("🏁 ÇIKIŞ KRİTERİ") || trimmed.startsWith("💼 KARİYER")) {
+          flushParagraph();
+          const emoji = trimmed.startsWith("🎯") ? "🎯" : (trimmed.startsWith("🏁") ? "🏁" : "💼");
+          let content = trimmed;
+          if (i + 1 < lines.length && lines[i + 1].trim()) {
+            content += "\n" + lines[i + 1].trim();
+            i++;
+          }
+          blocks.push({
+            object: "block",
+            type: "callout",
+            callout: {
+              icon: { type: "emoji", emoji },
+              rich_text: this.textSpans(content)
+            }
+          });
+          continue;
+        }
+
+        // Headings: 📚 ALT KONULAR, 📝 KENDİ ÇALIŞMA NOTLARIM, or ###
+        if (trimmed.startsWith("📚") || trimmed.startsWith("📝") || trimmed.startsWith("###")) {
+          flushParagraph();
+          blocks.push({
+            object: "block",
+            type: "heading_3",
+            heading_3: {
+              rich_text: this.textSpans(trimmed.replace(/^###\s*/, ""))
+            }
+          });
+          continue;
+        }
+
+        currentParagraph.push(line);
+      }
+
+      flushParagraph();
+      return blocks;
     }
 
     // Rich HTML parser: generates native Notion blocks
@@ -240,7 +377,7 @@ const NotionAPI = {
           blocks.push({
             object: "block",
             type: "paragraph",
-            paragraph: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000) } }] }
+            paragraph: { rich_text: this.textSpans(text) }
           });
         }
         return;
@@ -279,7 +416,7 @@ const NotionAPI = {
             object: "block",
             type: "code",
             code: {
-              rich_text: [{ type: "text", text: { content: codeText.slice(0, 2000) } }],
+              rich_text: this.textSpans(codeText),
               language: cleanLang
             }
           });
@@ -297,7 +434,7 @@ const NotionAPI = {
             object: "block",
             type: "code",
             code: {
-              rich_text: [{ type: "text", text: { content: codeText.slice(0, 2000) } }],
+              rich_text: this.textSpans(codeText),
               language: "bash"
             }
           });
@@ -342,7 +479,7 @@ const NotionAPI = {
       }
     });
 
-    return blocks.slice(0, 95);
+    return blocks;
   },
 
   extractTitle(item) {
@@ -438,6 +575,10 @@ const NotionAPI = {
     return false;
   },
 
+  escapeAttribute(value) {
+    return String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  },
+
   richTextToHTML(richText = []) {
     if (!richText || !richText.length) return "";
     return richText.map(t => {
@@ -453,8 +594,8 @@ const NotionAPI = {
       if (ann.strikethrough) content = `<s>${content}</s>`;
 
       const href = t.text?.link?.url || t.href;
-      if (href) {
-        content = `<a href="${href}" target="_blank" rel="noopener">${content}</a>`;
+      if (href && /^(https?:|mailto:)/i.test(href)) {
+        content = `<a href="${this.escapeAttribute(href)}" target="_blank" rel="noopener">${content}</a>`;
       }
       return content;
     }).join("");
@@ -478,7 +619,7 @@ const NotionAPI = {
       } else if (type === "quote") {
         htmlParts.push(`<blockquote class="rich-quote">${this.richTextToHTML(block.quote?.rich_text)}</blockquote>`);
       } else if (type === "callout") {
-        const plain = block.callout?.rich_text?.map(t => t.plain_text).join("") || "";
+        const plain = block.callout?.rich_text?.map(t => t.plain_text || t.text?.content || "").join("") || "";
         if (plain.includes("Durum:") && plain.includes("Alan:")) {
           continue;
         }
@@ -493,35 +634,32 @@ const NotionAPI = {
         const imgUrl = block.image?.type === "external" ? block.image?.external?.url : block.image?.file?.url;
         if (imgUrl) {
           const caption = this.richTextToHTML(block.image?.caption || []);
-          htmlParts.push(`<figure class="editor-image-wrap" contenteditable="false" data-size="100%"><img src="${imgUrl}" class="editor-image" loading="lazy"><figcaption class="editor-image-caption" contenteditable="true" data-placeholder="Açıklama ekle...">${caption}</figcaption></figure>`);
+          htmlParts.push(`<figure class="editor-image-wrap" contenteditable="false" data-size="100%"><img src="${this.escapeAttribute(imgUrl)}" class="editor-image" loading="lazy"><figcaption class="editor-image-caption" contenteditable="true" data-placeholder="Açıklama ekle...">${caption}</figcaption></figure>`);
         }
       } else if (type === "divider") {
         htmlParts.push("<hr>");
       } else if (type === "bulleted_list_item") {
         htmlParts.push(`<li>${this.richTextToHTML(block.bulleted_list_item?.rich_text)}</li>`);
+      } else if (type === "to_do") {
+        htmlParts.push(`<p>[${block.to_do.checked ? "x" : " "}] ${this.richTextToHTML(block.to_do.rich_text)}</p>`);
       } else if (type === "numbered_list_item") {
         htmlParts.push(`<li>${this.richTextToHTML(block.numbered_list_item?.rich_text)}</li>`);
       }
+      if (block.childrenHTML) htmlParts.push(block.childrenHTML);
     }
 
     return htmlParts.join("");
   },
 
   async fetchPageBlocksHTML(token, pageId) {
-    if (!token || !pageId) return "";
-    const cleanId = this.cleanDatabaseId(pageId);
-    try {
-      const res = await fetch(`${NOTION_BASE_URL}/blocks/${cleanId}/children?page_size=100`, {
-        method: "GET",
-        headers: this.getHeaders(token)
-      });
-      if (!res.ok) return "";
-      const data = await res.json();
-      return this.blocksToHTML(data.results || []);
-    } catch (e) {
-      console.warn("Sayfa blokları çekilemedi:", pageId, e);
-      return "";
+    if (!token || !pageId) throw new Error("Token veya sayfa ID eksik.");
+    const blocks = await this.listBlocks(token, pageId);
+    for (const block of blocks) {
+      if (block.has_children && !["child_page", "child_database"].includes(block.type)) {
+        block.childrenHTML = await this.fetchPageBlocksHTML(token, block.id);
+      }
     }
+    return this.blocksToHTML(blocks);
   },
 
   async getOrFindUmbrellaPageId(token, explicitId = null) {
@@ -531,7 +669,7 @@ const NotionAPI = {
     }
     try {
       // 1. Search all accessible items first without query filter
-      const res = await fetch(`${NOTION_BASE_URL}/search`, {
+      const res = await this.request(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify({
@@ -549,7 +687,7 @@ const NotionAPI = {
       }
 
       // 2. Fallback: targeted search query
-      const queryRes = await fetch(`${NOTION_BASE_URL}/search`, {
+      const queryRes = await this.request(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify({
@@ -583,7 +721,7 @@ const NotionAPI = {
       const bodyPayload = { page_size: 100 };
       if (nextCursor) bodyPayload.start_cursor = nextCursor;
 
-      const res = await fetch(`${NOTION_BASE_URL}/search`, {
+      const res = await this.request(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify(bodyPayload)
@@ -680,12 +818,12 @@ const NotionAPI = {
         const title = this.extractTitle(item);
         const category = this.extractCategory(item, areasMap, allItemsMap);
 
-        // If umbrella container is active, ignore any pages that don't belong to a NotMonk Area
-        if (umbrellaId && !category) {
+        // NotMonk alanına ait olmayan sayfaları atla
+        if (!category || category === "Genel") {
           continue;
         }
 
-        const finalCategory = category || "Genel";
+        const finalCategory = category;
         const status = this.extractStatus(item);
         const today = this.extractToday(item);
         const resource = this.extractResource(item);
@@ -693,6 +831,7 @@ const NotionAPI = {
         topics.push({
           id: crypto.randomUUID(),
           notionPageId: item.id,
+          notionParentPageId: item.parent?.page_id || null,
           notionUrl: item.url,
           title: title || "İsimsiz Konu",
           category: finalCategory,
@@ -705,14 +844,41 @@ const NotionAPI = {
       }
     }
 
+    const topicIdByNotionId = new Map(topics.map(topic => [this.cleanDatabaseId(topic.notionPageId), topic.id]));
+    topics.forEach(topic => {
+      topic.parentTopicId = topic.notionParentPageId
+        ? (topicIdByNotionId.get(this.cleanDatabaseId(topic.notionParentPageId)) || null)
+        : null;
+    });
+
     return { areas, topics, areasMap, umbrellaId };
+  },
+
+  async isPageInTrash(token, pageId) {
+    if (!token || !pageId) return false;
+    try {
+      const cleanId = this.cleanDatabaseId(pageId);
+      const res = await this.request(`${NOTION_BASE_URL}/pages/${cleanId}`, {
+        method: "GET",
+        headers: this.getHeaders(token)
+      });
+      if (res.status === 404 || res.status === 400) {
+        return false; // Erişim kaybı silinme kanıtı değildir.
+      }
+      if (!res.ok) return false;
+      const data = await res.json();
+      return Boolean(data.in_trash || data.archived);
+    } catch (e) {
+      console.warn("[NotMonk] isPageInTrash kontrol hatası:", e);
+      return false;
+    }
   },
 
   async fetchRecentWorkspaceChanges(token, explicitDbId = null, existingTopics = [], knownAreaMapping = {}) {
     if (!token) return null;
 
     try {
-      const res = await fetch(`${NOTION_BASE_URL}/search`, {
+      const res = await this.request(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify({
@@ -720,7 +886,7 @@ const NotionAPI = {
             direction: "descending",
             timestamp: "last_edited_time"
           },
-          page_size: 25
+          page_size: 100
         })
       });
 
@@ -730,7 +896,12 @@ const NotionAPI = {
 
       const data = await res.json();
       const results = data.results || [];
-      if (!results.length) return null;
+      let cursor = data.has_more ? data.next_cursor : null;
+      while (cursor) {
+        const next = await this.checked(`${NOTION_BASE_URL}/search`, { method: "POST", headers: this.getHeaders(token), body: JSON.stringify({ page_size: 100, start_cursor: cursor, sort: { direction: "descending", timestamp: "last_edited_time" } }) });
+        results.push(...(next.results || []));
+        cursor = next.has_more ? next.next_cursor : null;
+      }
 
       // Build area reverse lookup: notionId -> areaTitle
       const areaIdToTitle = new Map();
@@ -746,10 +917,51 @@ const NotionAPI = {
           existingMap.set(this.cleanDatabaseId(t.notionPageId), t);
         }
       });
+      const resultItemsMap = new Map(results.map(item => [this.cleanDatabaseId(item.id), item]));
+
+      const resolveAreaFromAncestors = item => {
+        let parentId = this.cleanDatabaseId(item.parent?.page_id || item.parent?.database_id || "");
+        const visited = new Set();
+        while (parentId && !visited.has(parentId)) {
+          visited.add(parentId);
+          if (areaIdToTitle.has(parentId)) return areaIdToTitle.get(parentId);
+          const parentItem = resultItemsMap.get(parentId);
+          if (!parentItem) break;
+          parentId = this.cleanDatabaseId(parentItem.parent?.page_id || parentItem.parent?.database_id || "");
+        }
+        return "";
+      };
 
       const updatedTopics = [];
       const newTopics = [];
       const archivedPageIds = [];
+      const archivedAreaTitles = [];
+
+      // Aktif sonuçlardaki sayfa ID'leri
+      const activeResultIds = new Set(results.map(r => this.cleanDatabaseId(r.id)));
+
+      // Notion'da silinmiş (çöpe atılmış) sayfaları tespit et:
+      // Mevcut konulardan arama sonuçlarında çıkmayanları isPageInTrash ile kontrol et
+      for (const [cleanPid, localTopic] of existingMap.entries()) {
+        if (!activeResultIds.has(cleanPid)) {
+          const inTrash = await this.isPageInTrash(token, localTopic.notionPageId);
+          if (inTrash) {
+            archivedPageIds.push(cleanPid);
+          }
+        }
+      }
+
+      // Notion'da silinmiş (çöpe atılmış) ALANLARI / KLASÖRLERİ tespit et:
+      for (const [catTitle, meta] of Object.entries(knownAreaMapping || {})) {
+        if (!meta?.id) continue;
+        const cleanAreaId = this.cleanDatabaseId(meta.id);
+        if (!activeResultIds.has(cleanAreaId)) {
+          const inTrash = await this.isPageInTrash(token, meta.id);
+          if (inTrash) {
+            archivedAreaTitles.push(catTitle);
+          }
+        }
+      }
 
       for (const item of results) {
         const cleanId = item.id.replace(/-/g, "");
@@ -775,22 +987,29 @@ const NotionAPI = {
         let category = "";
         if (areaIdToTitle.has(parentId)) {
           category = areaIdToTitle.get(parentId);
+        } else if (resolveAreaFromAncestors(item)) {
+          category = resolveAreaFromAncestors(item);
         } else if (local?.category) {
           category = local.category;
         } else {
-          category = this.extractCategory(item, null, null) || "Genel";
+          category = this.extractCategory(item, null, null) || "";
+        }
+
+        // NotMonk alanına ait olmayan ve lokalde kayıtlı olmayan sayfaları atla (kullanıcının kişisel Notion sayfaları)
+        if (!local && (!category || category === "Genel")) {
+          continue;
         }
 
         const remoteEditedMs = new Date(item.last_edited_time || 0).getTime();
         const localEditedMs = local?.notionLastEditedTime || local?.updatedAt || 0;
 
-        // Is this topic newer in Notion by more than 1500ms?
-        const isNewer = !local || (remoteEditedMs - localEditedMs > 1500);
+        const isNewer = !local || remoteEditedMs > localEditedMs;
 
         if (isNewer) {
-          const status = this.extractStatus(item);
-          const today = this.extractToday(item);
-          const resource = this.extractResource(item);
+          const native = item.parent?.type === "page_id";
+          const status = native ? (local?.status || "todo") : this.extractStatus(item);
+          const today = native ? (local?.today || false) : this.extractToday(item);
+          const resource = native ? (local?.resource || "") : this.extractResource(item);
 
           let freshNotes = local?.notes || "";
           try {
@@ -799,21 +1018,25 @@ const NotionAPI = {
               freshNotes = fetchedHTML;
             }
           } catch (e) {
-            console.warn("[NotMonk] Hızlı blok çekimi hatası:", e);
+            throw e;
           }
 
+          const metadata = item.parent?.type === "page_id" ? await this.readMetadata(token, item.id) : {};
           const topicData = {
             id: local?.id || crypto.randomUUID(),
             notionPageId: item.id,
+            notionParentPageId: item.parent?.page_id || null,
             notionUrl: item.url,
             title: title.trim() || "İsimsiz Konu",
             category,
             status,
             today: today !== undefined ? today : (local?.today || false),
-            resource: resource || local?.resource || "",
+            resource,
             notes: freshNotes,
             notionLastEditedTime: remoteEditedMs,
-            updatedAt: Date.now()
+            updatedAt: Date.now(),
+            ...metadata,
+            parentTopicId: local?.parentTopicId || null
           };
 
           if (local) {
@@ -827,7 +1050,8 @@ const NotionAPI = {
       return {
         updatedTopics,
         newTopics,
-        archivedPageIds
+        archivedPageIds,
+        archivedAreaTitles
       };
     } catch (e) {
       console.warn("[NotMonk] fetchRecentWorkspaceChanges genel hata:", e);
@@ -847,7 +1071,7 @@ const NotionAPI = {
       const bodyPayload = { page_size: 100 };
       if (nextCursor) bodyPayload.start_cursor = nextCursor;
 
-      const res = await fetch(`${NOTION_BASE_URL}/search`, {
+      const res = await this.request(`${NOTION_BASE_URL}/search`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify(bodyPayload)
@@ -871,15 +1095,18 @@ const NotionAPI = {
       try {
         const dbTopics = await this.queryDatabase(token, explicitDbId);
         for (const remote of dbTopics) {
-          const idx = topics.findIndex(t => t.notionPageId === remote.notionPageId || t.title.toLowerCase() === remote.title.toLowerCase());
+          // Hata 14: Önce notionPageId ile eşleştir (kesin), sonra title ile (belirsiz)
+          let idx = topics.findIndex(t => t.notionPageId && this.cleanDatabaseId(t.notionPageId) === this.cleanDatabaseId(remote.notionPageId));
           if (idx !== -1) {
-            topics[idx] = { ...topics[idx], ...remote };
+            // Hata 14: Mevcut local id'yi koru — her sync'te yeni UUID üretme
+            const existingLocalId = topics[idx].id;
+            topics[idx] = { ...topics[idx], ...remote, id: existingLocalId };
           } else {
             topics.push(remote);
           }
         }
       } catch (e) {
-        console.warn("Veritabanı sorgulanamadı:", e);
+        throw e;
       }
     }
 
@@ -896,6 +1123,7 @@ const NotionAPI = {
           topic.notes = blocksHTML;
         }
       }
+      Object.assign(topic, await this.readMetadata(token, topic.notionPageId));
       count++;
       if (onProgress && count % 2 === 0) {
         onProgress(`Notlar çekiliyor (${count}/${topics.length})...`);
@@ -916,43 +1144,26 @@ const NotionAPI = {
       body = {
         parent: { type: "database_id", database_id: formattedId },
         properties,
-        children: children.length > 0 ? children : undefined
+        children: children.length > 0 ? children.slice(0, 98) : undefined
       };
     } else {
       // Create as native Notion Page (Document File) inside a Teamspace / Parent Page
       const statusMap = { todo: "Başlamadım ⏳", learning: "Öğreniyorum 📖", done: "Öğrendim ✅" };
       const statusText = statusMap[topic.status] || "Başlamadım";
       
-      const metaBlocks = [
-        {
-          object: "block",
-          type: "callout",
-          callout: {
-            icon: { emoji: topic.status === "done" ? "✅" : (topic.status === "learning" ? "⚡" : "📌") },
-            rich_text: [{
-              type: "text",
-              text: { content: `Durum: ${statusText}  |  Alan: ${topic.category || "Genel"}${topic.resource ? `\nKaynak: ${topic.resource}` : ""}` }
-            }]
-          }
-        },
-        {
-          object: "block",
-          type: "divider",
-          divider: {}
-        }
-      ];
+      const metaBlocks = [this.metadataBlock(topic)];
 
       body = {
         parent: { type: "page_id", page_id: formattedId },
         properties: {
-          title: [{ type: "text", text: { content: topic.title || "İsimsiz Konu" } }]
+          title: { title: this.textSpans(topic.title || "İsimsiz Konu") }
         },
         icon: { type: "emoji", emoji: topic.status === "done" ? "✅" : "📄" },
-        children: [...metaBlocks, ...children].slice(0, 95)
+        children: [...metaBlocks, ...children.slice(0, 98)]
       };
     }
 
-    const res = await fetch(`${NOTION_BASE_URL}/pages`, {
+    const res = await this.request(`${NOTION_BASE_URL}/pages`, {
       method: "POST",
       headers: this.getHeaders(token),
       body: JSON.stringify(body)
@@ -964,56 +1175,61 @@ const NotionAPI = {
     }
 
     const data = await res.json();
+    for (let i = 98; i < children.length; i += 100) {
+      await this.checked(`${NOTION_BASE_URL}/blocks/${data.id}/children`, { method: "PATCH", headers: this.getHeaders(token), body: JSON.stringify({ children: children.slice(i, i + 100) }) });
+    }
     return {
       notionPageId: data.id,
       notionUrl: data.url
     };
   },
 
-  async updatePageBlocks(token, pageId, notes) {
-    if (!token || !pageId) return;
-    const cleanId = this.cleanDatabaseId(pageId);
-    const newBlocks = this.buildChildrenBlocks(notes);
-    if (!newBlocks.length) return;
+  async updatePageBlocks(token, pageId, notes, metadata = null) {
+    const oldBlocks = await this.listBlocks(token, pageId);
+    const oldContentBlocks = oldBlocks.filter(block => {
+      if (["child_page", "child_database"].includes(block.type)) return false;
+      if (block.type !== "callout") return true;
+      const text = (block.callout?.rich_text || []).map(part => part.plain_text || part.text?.content || "").join("");
+      return !text.startsWith("Durum:");
+    });
+    const remoteNotes = this.blocksToHTML(oldContentBlocks).trim();
+    const localNotes = String(notes || "").trim();
+    let mergedNotes = localNotes;
+    if (!localNotes) mergedNotes = remoteNotes;
+    else if (!remoteNotes || localNotes.includes(remoteNotes)) mergedNotes = localNotes;
+    else if (remoteNotes.includes(localNotes)) mergedNotes = remoteNotes;
+    else mergedNotes = `${remoteNotes}<hr><h2>NotMonk'tan gelen notlar</h2>${localNotes}`;
 
-    try {
-      const existingRes = await fetch(`${NOTION_BASE_URL}/blocks/${cleanId}/children?page_size=40`, {
-        method: "GET",
-        headers: this.getHeaders(token)
-      });
-      if (existingRes.ok) {
-        const existingData = await existingRes.json();
-        // Delete up to 15 old blocks (skip top callout if desired)
-        for (const block of (existingData.results || []).slice(0, 15)) {
-          await fetch(`${NOTION_BASE_URL}/blocks/${block.id}`, {
-            method: "DELETE",
-            headers: this.getHeaders(token)
-          }).catch(() => {});
-        }
-      }
+    // Boş bir aktarım, Notion'daki dolu sayfayı hiçbir zaman temizlemez.
+    if (!metadata && !localNotes && remoteNotes) return;
 
-      await fetch(`${NOTION_BASE_URL}/blocks/${cleanId}/children`, {
-        method: "PATCH",
-        headers: this.getHeaders(token),
-        body: JSON.stringify({ children: newBlocks.slice(0, 95) })
+    const newBlocks = [...(metadata ? [metadata] : []), ...this.buildChildrenBlocks(mergedNotes)];
+    // Append first: a failed upload must not erase the existing document.
+    for (let i = 0; i < newBlocks.length; i += 100) {
+      await this.checked(`${NOTION_BASE_URL}/blocks/${pageId}/children`, {
+        method: "PATCH", headers: this.getHeaders(token),
+        body: JSON.stringify({ children: newBlocks.slice(i, i + 100) })
       });
-    } catch (e) {
-      console.warn("Sayfa blokları güncellenirken hata oluştu:", e);
+    }
+    for (const block of oldBlocks) {
+      if (["child_page", "child_database"].includes(block.type)) continue;
+      await this.checked(`${NOTION_BASE_URL}/blocks/${block.id}`, { method: "DELETE", headers: this.getHeaders(token) });
     }
   },
 
-  async updatePage(token, pageId, topic, isDatabase = true, schemaProperties = {}) {
+  // Hata 11: contentChanged=true ise blokları güncelle, false ise sadece metadata güncelle
+  async updatePage(token, pageId, topic, isDatabase = true, schemaProperties = {}, contentChanged = true) {
     if (!pageId) throw new Error("Sayfa ID'si belirtilmemiş.");
     let properties = {};
     if (isDatabase) {
       properties = this.buildProperties(topic, schemaProperties);
     } else {
       properties = {
-        title: [{ type: "text", text: { content: topic.title || "İsimsiz Konu" } }]
+        title: { title: this.textSpans(topic.title || "İsimsiz Konu") }
       };
     }
 
-    const res = await fetch(`${NOTION_BASE_URL}/pages/${pageId}`, {
+    const res = await this.request(`${NOTION_BASE_URL}/pages/${pageId}`, {
       method: "PATCH",
       headers: this.getHeaders(token),
       body: JSON.stringify({ properties })
@@ -1024,15 +1240,23 @@ const NotionAPI = {
       throw new Error(err.message || `Sayfa güncellenemedi: ${res.status}`);
     }
 
-    // Also update notes blocks
-    if (topic.notes) {
-      await this.updatePageBlocks(token, pageId, topic.notes);
+    // Hata 11: Sadece içerik değiştiyse blokları güncelle — gereksiz API çağrılarını ve echo'yu önler
+    if (contentChanged) {
+      await this.updatePageBlocks(token, pageId, topic.notes, isDatabase ? null : this.metadataBlock(topic));
     }
 
-    const data = await res.json();
+    await res.json();
+    if (!isDatabase && !contentChanged) {
+      const blocks = await this.listBlocks(token, pageId);
+      const old = blocks.find(b => b.type === "callout" && (b.callout.rich_text || []).map(t => t.plain_text || t.text?.content || "").join("").startsWith("Durum:"));
+      const block = this.metadataBlock(topic);
+      await this.checked(`${NOTION_BASE_URL}/blocks/${old ? old.id : pageId + '/children'}`, { method: "PATCH", headers: this.getHeaders(token), body: JSON.stringify(old ? { callout: block.callout } : { children: [block] }) });
+    }
+    const data = await this.checked(`${NOTION_BASE_URL}/pages/${pageId}`, { headers: this.getHeaders(token) });
     return {
       notionPageId: data.id,
-      notionUrl: data.url
+      notionUrl: data.url,
+      notionLastEditedTime: Date.parse(data.last_edited_time) || 0
     };
   },
 
@@ -1056,7 +1280,7 @@ const NotionAPI = {
     const pagePayload = {
       parent: { type: "page_id", page_id: formattedId },
       properties: {
-        title: [{ type: "text", text: { content: title } }]
+        title: { title: this.textSpans(title) }
       },
       icon: iconPayload
     };
@@ -1067,7 +1291,7 @@ const NotionAPI = {
     });
 
     try {
-      let res = await fetch(`${NOTION_BASE_URL}/pages`, {
+      let res = await this.request(`${NOTION_BASE_URL}/pages`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify(pagePayload)
@@ -1080,7 +1304,7 @@ const NotionAPI = {
         // Fallback: check if parent was actually a database
         if (errJson.message && (errJson.message.includes("database") || errJson.message.includes("parent"))) {
           pagePayload.parent = { type: "database_id", database_id: formattedId };
-          res = await fetch(`${NOTION_BASE_URL}/pages`, {
+          res = await this.request(`${NOTION_BASE_URL}/pages`, {
             method: "POST",
             headers: this.getHeaders(token),
             body: JSON.stringify(pagePayload)
@@ -1121,7 +1345,7 @@ const NotionAPI = {
     if (!iconPayload) return;
 
     try {
-      await fetch(`${NOTION_BASE_URL}/pages/${cleanId}`, {
+      await this.request(`${NOTION_BASE_URL}/pages/${cleanId}`, {
         method: "PATCH",
         headers: this.getHeaders(token),
         body: JSON.stringify({ icon: iconPayload })
@@ -1135,7 +1359,7 @@ const NotionAPI = {
     if (!token || !pageId) return;
     const cleanId = this.cleanDatabaseId(pageId);
     try {
-      await fetch(`${NOTION_BASE_URL}/pages/${cleanId}`, {
+      await this.request(`${NOTION_BASE_URL}/pages/${cleanId}`, {
         method: "PATCH",
         headers: this.getHeaders(token),
         body: JSON.stringify({ archived: true })
@@ -1145,14 +1369,43 @@ const NotionAPI = {
     }
   },
 
-  async syncTopic(token, defaultParentId, topic, schemaProperties = {}, areaMapping = {}, umbrellaParentId = null) {
+  async movePage(token, pageId, parentId, parentType = "page") {
+    if (!pageId || !parentId) return null;
+    const type = parentType === "database" ? "data_source_id" : "page_id";
+    const headers = { ...this.getHeaders(token), "Notion-Version": "2025-09-03" };
+    return this.checked(`${NOTION_BASE_URL}/pages/${this.cleanDatabaseId(pageId)}/move`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ parent: { type, [type]: this.cleanDatabaseId(parentId) } })
+    });
+  },
+
+  // Hata 11: contentChanged parametresi — sadece içerik değiştiyse blok güncellemesi yapılır
+  async syncTopic(token, defaultParentId, topic, schemaProperties = {}, areaMapping = {}, umbrellaParentId = null, contentChanged = true, parentPageId = null, desiredParentType = "page") {
     if (!token) return null;
 
     // Determine target parent (check if area is mapped to a specific Teamspace / Parent Page or Database)
     let targetParentId = defaultParentId;
     let isDatabase = true;
 
-    if (topic.category && areaMapping[topic.category]) {
+    if (topic.notionPageId) {
+      const page = await this.checked(`${NOTION_BASE_URL}/pages/${topic.notionPageId}`, { headers: this.getHeaders(token) });
+      isDatabase = page.parent?.type === "database_id";
+      targetParentId = page.parent?.database_id || page.parent?.page_id;
+      if (parentPageId && this.cleanDatabaseId(parentPageId) !== this.cleanDatabaseId(targetParentId)) {
+        await this.movePage(token, topic.notionPageId, parentPageId, desiredParentType);
+        targetParentId = parentPageId;
+        isDatabase = desiredParentType === "database";
+      }
+    } else if (parentPageId) {
+      targetParentId = this.cleanDatabaseId(parentPageId);
+      isDatabase = false;
+    } else if (defaultParentId) {
+      const resolved = await this.resolveDatabaseId(token, defaultParentId);
+      targetParentId = resolved.databaseId;
+      isDatabase = !resolved.isPage;
+      schemaProperties = resolved.properties;
+    } else if (topic.category && areaMapping[topic.category]) {
       const mapped = areaMapping[topic.category];
       targetParentId = mapped.id || mapped;
       isDatabase = mapped.type ? mapped.type === "database" : false;
@@ -1171,21 +1424,21 @@ const NotionAPI = {
       }
     }
 
-    if (!targetParentId) return null;
+    if (!targetParentId) throw new Error("Notion hedef sayfası bulunamadı.");
 
+    if (isDatabase) {
+      const db = await this.resolveDatabaseId(token, targetParentId);
+      schemaProperties = db.properties;
+    }
     try {
       if (topic.notionPageId) {
-        return await this.updatePage(token, topic.notionPageId, topic, isDatabase, schemaProperties);
+        // Hata 11: contentChanged'i updatePage'e ilet
+        return await this.updatePage(token, topic.notionPageId, topic, isDatabase, schemaProperties, contentChanged);
       } else {
         return await this.createPage(token, targetParentId, topic, isDatabase, schemaProperties);
       }
     } catch (e) {
       console.warn("Notion senkronizasyon hatası:", e);
-      if (e.message && (e.message.includes("Could not find page") || e.message.includes("404"))) {
-        topic.notionPageId = null;
-        topic.notionUrl = null;
-        return await this.createPage(token, targetParentId, topic, isDatabase, schemaProperties);
-      }
       throw e;
     }
   },
@@ -1197,7 +1450,7 @@ const NotionAPI = {
     let nextCursor = undefined;
 
     while (hasMore) {
-      const res = await fetch(`${NOTION_BASE_URL}/databases/${databaseId}/query`, {
+      const res = await this.request(`${NOTION_BASE_URL}/databases/${databaseId}/query`, {
         method: "POST",
         headers: this.getHeaders(token),
         body: JSON.stringify({

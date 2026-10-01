@@ -568,6 +568,13 @@ tbody tr:hover {
   gap: 8px;
 }
 
+.table-title .title-wrap { padding-left: calc(var(--topic-depth, 0) * 22px); }
+.child-note-connector { color: var(--muted); flex: 0 0 auto; font-size: 15px; }
+.add-child-note { display: inline-grid; place-items: center; width: 25px; height: 25px; margin-left: 2px; padding: 0; border: 0; border-radius: 5px; color: var(--muted); background: transparent; opacity: 0; transition: opacity .15s, background .15s, color .15s; }
+.add-child-note .ui-icon { width: 15px; height: 15px; }
+tr:hover .add-child-note, .add-child-note:focus-visible { opacity: 1; }
+.add-child-note:hover { color: var(--text); background: var(--line); }
+
 .resource-icon-link {
   display: inline-flex;
   align-items: center;
@@ -745,6 +752,47 @@ tr.drag-over {
   justify-content: center;
   gap: 6px;
   margin-top: 24px;
+}
+
+/* Area workspace: Notion-like page tree + persistent document. */
+.topics-view.area-mode > :not(#area-workspace) { display: none !important; }
+.area-workspace { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: max(920px, calc(100vh - 150px)); height: auto; align-items: stretch; border: 1px solid var(--line); border-radius: 12px; overflow: visible; background: var(--panel); }
+.area-workspace.hidden { display: none; }
+.note-tree-panel { min-width: 0; min-height: max(920px, calc(100vh - 150px)); display: flex; flex-direction: column; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 92%, var(--bg)); }
+.note-tree-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 13px 12px 13px 18px; border-bottom: 1px solid var(--line); }
+.note-tree-header > div { min-width: 0; display: grid; gap: 3px; }
+.note-tree-header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 650 14px/1.3 system-ui; color: var(--text); }
+.note-tree-header span { font: 500 11px/1.3 system-ui; color: var(--muted); }
+.note-tree-header > button { flex: 0 0 auto; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 20px; }
+.note-tree-header > button:hover { background: var(--line); color: var(--text); }
+.note-tree-list { flex: 1; overflow: visible; padding: 8px 8px 36px; }
+.note-tree-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 26px 26px; align-items: center; min-height: 34px; padding-left: calc(var(--tree-depth, 0) * 17px); border-radius: 6px; color: var(--muted); }
+.note-tree-row:hover { background: color-mix(in srgb, var(--line) 72%, transparent); color: var(--text); }
+.note-tree-row.active { background: color-mix(in srgb, var(--accent) 14%, var(--panel)); color: var(--text); }
+.note-tree-toggle, .note-tree-add-child, .note-tree-open { border: 0; background: transparent; color: inherit; }
+.note-tree-toggle { display: grid; place-items: center; width: 20px; height: 28px; padding: 0; border-radius: 4px; font-size: 17px; }
+.note-tree-toggle:not(.empty):hover { background: var(--line2); }
+.note-tree-open { min-width: 0; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 5px; text-align: left; font: 500 13px/1.25 system-ui; }
+.note-tree-open .ui-icon { flex: 0 0 auto; width: 16px; height: 16px; opacity: .82; }
+.note-tree-open span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-tree-add-child { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border-radius: 5px; opacity: .48; font-size: 17px; }
+.note-tree-row:hover .note-tree-add-child, .note-tree-add-child:focus-visible { opacity: 1; }
+.note-tree-add-child:hover { background: var(--line2); }
+.note-document-panel { position: relative; min-width: 0; min-height: max(920px, calc(100vh - 150px)); overflow: visible; background: var(--panel); }
+.inline-editor-host { width: 100%; min-height: max(920px, calc(100vh - 150px)); height: auto; }
+.note-document-empty { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 30px; text-align: center; color: var(--muted); }
+.note-document-empty.hidden { display: none; }
+.note-document-empty .empty-document-icon { display: grid; place-items: center; width: 54px; height: 54px; border: 1px solid var(--line2); border-radius: 12px; font-size: 27px; }
+.note-document-empty strong { color: var(--text); font: 650 17px system-ui; }
+.note-document-empty p { max-width: 330px; margin: 0 0 8px; font: 13px/1.55 system-ui; }
+
+@media (max-width: 820px) {
+  .area-workspace { grid-template-columns: 240px minmax(0, 1fr); min-height: 820px; height: auto; }
+}
+@media (max-width: 620px) {
+  .area-workspace { grid-template-columns: 1fr; height: auto; min-height: 0; overflow: visible; }
+  .note-tree-panel { min-height: 230px; max-height: 38vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  .note-document-panel { min-height: 70vh; }
 }
 
 .pagination button {
@@ -1313,6 +1361,43 @@ tr.drag-over {
   transform: translateY(-2px) scale(0.99);
 }
 
+.module-card.dragging-module {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  margin: 0;
+  transform: scale(1.035);
+  border-color: var(--accent);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.55), 0 0 0 2px var(--accent-soft);
+  opacity: 0.94;
+  animation: none;
+  cursor: grabbing;
+}
+
+.module-placeholder {
+  min-height: 174px;
+  border: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
+  animation: modulePlaceholderPulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes modulePlaceholderPulse {
+  from { opacity: .55; }
+  to { opacity: 1; }
+}
+
+.module-reordering,
+.module-reordering * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+.module-reordering .module-card:not(.dragging-module) {
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
 .card-top {
   display: flex;
   flex-direction: column;
@@ -1363,12 +1448,12 @@ tr.drag-over {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
   background: var(--panel2);
   border: 1px solid var(--line2);
-  font-size: 17px;
+  font-size: 23px;
   overflow: hidden;
   flex-shrink: 0;
   line-height: 1;
@@ -1381,7 +1466,7 @@ tr.drag-over {
 .card-avatar-btn:hover {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
-  transform: scale(1.06);
+  transform: scale(1.05);
 }
 
 .card-avatar img,
@@ -1390,24 +1475,6 @@ tr.drag-over {
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-.card-avatar-btn .avatar-hover-cam {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-  border-radius: 8px;
-}
-
-.card-avatar-btn:hover .avatar-hover-cam {
-  opacity: 1;
 }
 
 .card-index {
@@ -2103,3 +2170,102 @@ tr.drag-over {
 }
 
 
+
+/* Quiet, consistent controls with a shared icon grid. */
+.ui-icon { width: 18px; height: 18px; display: inline-block; flex: 0 0 18px; vertical-align: middle; }
+.nav-actions { gap: 6px; }
+.nav-actions .nav-icon-btn { min-width: 36px; height: 36px; padding: 8px; border: 1px solid transparent; background: transparent; box-shadow: none; border-radius: 6px; color: var(--muted); display: inline-flex; gap: 8px; align-items: center; justify-content: center; }
+.nav-actions #notion-toggle-btn { padding-inline: 10px; margin-right: 6px; font: 500 13px/1.4 system-ui; }
+.nav-actions .nav-icon-btn:hover { background: var(--panel); border-color: var(--line); color: var(--text); }
+.nav-actions .notion-icon { font: 700 15px Georgia,serif; background: transparent; color: var(--text); border: 1px solid var(--muted); border-radius: 3px; width: 18px; height: 20px; display: grid; place-items: center; }
+.nav-actions .notion-status-dot { width: 6px; height: 6px; box-shadow: none; }
+.nav-actions .sync-icon { display: inline-flex; }
+.table-shell.within-area .area-column { display: none; }
+.table-shell .status-button { box-shadow: none !important; font-family: system-ui; font-weight: 500; letter-spacing: 0; }
+.table-shell .row-action { font: 500 12px system-ui; padding: 7px 10px; color: var(--muted); border-color: transparent; background: transparent; }
+.table-shell .row-action:hover { color: var(--text); background: var(--line); }
+.star-btn .ui-icon { width: 17px; height: 17px; }
+.star-btn.active .ui-icon { fill: currentColor; }
+.resource-icon-link .ui-icon { width: 15px; height: 15px; }
+:is(.nav-icon-btn,.star-btn,.row-action,.resource-icon-link):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Connection setup: one readable column, explicit transfer directions. */
+.notion-dialog { width: min(620px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.notion-dialog .notion-dialog-body { padding: 22px 24px; min-width: 0; }
+.notion-dialog .dialog-header { padding: 22px 24px; }
+.notion-dialog .dialog-title-wrap { min-width: 0; }
+.notion-dialog .dialog-header p { line-height: 1.5; }
+.notion-dialog .notion-guide-card { padding: 13px 15px; background: transparent; border: 1px solid var(--line); margin-bottom: 24px; }
+.notion-dialog .guide-title { cursor: pointer; font: 500 13px/1.6 system-ui; color: var(--text); }
+.notion-dialog .guide-steps { font: 13px/1.7 system-ui; margin-top: 12px; padding-left: 20px; }
+.notion-section-heading { font: 600 14px/1.5 system-ui; color: var(--text); margin: 0 0 14px; }
+.notion-dialog .notion-field-label { font: 500 13px/1.5 system-ui; letter-spacing: 0; gap: 7px; }
+.notion-field-label > span { display: flex; justify-content: space-between; gap: 8px; }
+.notion-field-label small { font-weight: 400; color: var(--muted); }
+.notion-dialog .notion-field-label input { width: 100%; min-width: 0; box-sizing: border-box; font: 14px/1.5 system-ui; padding: 10px 12px; }
+.notion-help { font: 12px/1.65 system-ui; color: var(--muted); margin: 0 0 16px; }
+.notion-dialog .notion-checkbox-row { padding: 14px; border: 1px solid var(--line); border-radius: 8px; margin-block: 8px 16px; }
+.notion-dialog .toggle-checkbox { align-items: flex-start; gap: 12px; }
+.notion-dialog .toggle-checkbox input { flex: 0 0 auto; margin-top: 3px; accent-color: var(--accent); }
+.notion-dialog .toggle-checkbox b { display: block; font: 600 13px/1.5 system-ui; }
+.notion-dialog .toggle-checkbox small { display: block; color: var(--muted); font: 12px/1.65 system-ui; margin-top: 5px; }
+.notion-dialog .notion-test-row { flex-wrap: wrap; gap: 10px; }
+.notion-dialog .notion-status-msg { font: 12px/1.5 system-ui; overflow-wrap: anywhere; }
+.notion-dialog .sync-actions-row { display: grid; grid-template-columns: minmax(0,1fr); gap: 10px; }
+.notion-dialog .sync-btn { width: 100%; min-width: 0; box-sizing: border-box; justify-content: flex-start; text-align: left; padding: 14px; gap: 14px; border-radius: 8px; }
+.notion-dialog .sync-info { min-width: 0; white-space: normal; }
+.notion-dialog .sync-info b { font: 600 13px/1.5 system-ui; }
+.notion-dialog .sync-info small { font: 12px/1.6 system-ui; white-space: normal; overflow-wrap: anywhere; }
+.notion-dialog .sync-emoji { font: 22px/1 system-ui; width: 28px; height: 28px; display: grid; place-items: center; flex-shrink: 0; color: var(--muted); }
+.notion-cleanup { margin-top: 18px; }
+.notion-cleanup summary { cursor: pointer; font: 12px/1.5 system-ui; color: var(--muted); }
+.notion-cleanup .notion-help { margin-top: 10px; }
+.notion-dialog .dialog-footer { position: sticky; bottom: 0; background: var(--panel); padding: 16px 24px; }
+.notion-dialog :is(button,input,summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media(max-width:480px) { .notion-dialog .notion-dialog-body, .notion-dialog .dialog-header { padding: 18px; } .notion-dialog .dialog-title-wrap { gap: 10px; } }
+
+/* Clear hierarchy for areas and daily selections. */
+.brand { gap: 12px; }
+.brand .brand-logo { width: 56px; height: 56px; object-fit: contain; border-radius: 14px; background: var(--panel2); padding: 2px; flex-shrink: 0; opacity: 1; filter: none; }
+.brand strong { font: 700 21px/1.2 system-ui; color: var(--text); }
+.dashboard-head #page-section-code { display: none; }
+.dashboard-head h1 { font: 650 clamp(26px,3vw,36px)/1.25 system-ui; letter-spacing: -.8px; }
+.modules-grid { grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 16px; }
+.module-card { padding: 20px; border-radius: 12px; min-height: 174px; }
+.module-card .card-avatar-btn { width: 64px; height: 64px; min-width: 64px; border-radius: 16px; font-size: 38px; box-shadow: 0 3px 10px #0002; }
+.module-card .card-avatar-btn img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; padding: 3px; box-sizing: border-box; }
+.module-card .card-avatar-btn span { font-size: 38px; line-height: 1; }
+.module-card .card-title { font: 600 16px/1.45 system-ui; letter-spacing: -.2px; margin-top: 16px; min-height: 46px; }
+.module-card .card-count { font: 12px/1.5 system-ui; }
+.module-card .card-progress-bar { height: 3px; margin-top: 16px; }
+.module-card .card-delete-btn { opacity: 0; width: 28px; height: 28px; font-size: 16px; }
+.module-card:hover .card-delete-btn, .module-card:focus-within .card-delete-btn { opacity: 1; }
+.add-module-card { min-height: 174px; border-radius: 12px; font: 500 14px system-ui; }
+.add-module-circle { width: 40px; height: 40px; font-size: 24px; }
+#today-summary { color: var(--muted); font: 13px/1.5 system-ui; margin: 0 0 16px; }
+#today-list { display: grid; gap: 10px; }
+.today-item { display: flex; align-items: center; gap: 20px; padding: 18px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.today-open { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; text-align: left; cursor: pointer; color: var(--text); }
+.today-open span { display: block; color: var(--muted); font: 12px/1.5 system-ui; margin-bottom: 5px; }
+.today-open strong { display: block; font: 600 16px/1.5 system-ui; }
+.today-item .status-buttons { flex-shrink: 0; }
+.today-item .status-button { font: 12px/1.4 system-ui; box-shadow: none; }
+.today-remove { flex: 0 0 28px; width: 28px; height: 28px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 21px; cursor: pointer; }
+.today-remove:hover { color: var(--text); background: var(--line); }
+.today-item :is(button):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+@media (hover:none) { .module-card .card-delete-btn { opacity: .65; } }
+@media(max-width:640px) { .today-item { flex-wrap: wrap; gap: 12px; padding: 16px; } .today-open { flex-basis: calc(100% - 40px); } .today-item .status-buttons { order: 3; flex-wrap: wrap; width: 100%; } .brand .brand-logo { width: 46px; height: 46px; } }
+
+/* Larger area identity, with uncropped custom artwork. */
+.page-title-avatar { width: 56px; height: 56px; border-radius: 14px; font-size: 34px; }
+.page-title-avatar img { object-fit: contain; padding: 3px; box-sizing: border-box; }
+@media(max-width:640px) {
+  .module-card .card-avatar-btn { width: 56px; height: 56px; min-width: 56px; border-radius: 14px; }
+  .module-card .card-avatar-btn span { font-size: 34px; }
+  .page-title-avatar { width: 48px; height: 48px; font-size: 30px; }
+}
+
+.note-tree-today { display: grid; place-items: center; width: 25px; height: 28px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 19px; cursor: pointer; }
+.note-tree-today:hover, .note-tree-today:focus-visible { background: var(--accent-soft); color: var(--text); }
+.note-tree-today.active { color: #e8b65d; }
+.note-tree-today:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

@@ -6,9 +6,33 @@ function setSuggestion() {
   });
 }
 
-chrome.runtime.onInstalled.addListener(setSuggestion);
-chrome.runtime.onStartup.addListener(setSuggestion);
+chrome.runtime.onInstalled.addListener((details) => {
+  setSuggestion();
+  // Hata 2+13: Popup kapalıyken de sync devam etsin — her 30 saniyede bir heartbeat
+  chrome.alarms.create('notionHeartbeat', { periodInMinutes: 0.5 });
+  console.log('[NotMonk] Notion heartbeat alarmı kuruldu (30s)');
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  setSuggestion();
+  // Uygulama yeniden başladığında alarmı yeniden kur
+  chrome.alarms.create('notionHeartbeat', { periodInMinutes: 0.5 });
+});
+
 setSuggestion();
+
+// Hata 2+13: Alarm tetiklendiğinde popup'a sync sinyali gönder
+// Storage'a timestamp yaz → popup chrome.storage.onChanged ile yakalar
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== 'notionHeartbeat') return;
+
+  // Notion config'in varlığını kontrol et
+  const stored = await chrome.storage.local.get(['notionConfig']);
+  if (!stored.notionConfig?.token) return;
+
+  // Popup'a sync sinyali gönder — storage değişikliği popup'ın onChanged listener'ını tetikler
+  await chrome.storage.local.set({ _notionHeartbeatAt: Date.now() });
+});
 
 chrome.omnibox.onInputStarted.addListener(() => {
   setSuggestion();

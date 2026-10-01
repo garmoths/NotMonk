@@ -8,8 +8,9 @@ const RichEditor = (() => {
   let imagePopoverEl = null;
   let dropZoneEl = null;
   let savedRange = null;
+  let documentGeneration = 0;
   const COLORS = ['#e9edef', '#6c8ef0', '#f472b6', '#34d399', '#fbbf24', '#f87171'];
-  const LANGS = ['plain', 'python', 'javascript', 'bash', 'sql', 'c', 'go', 'html', 'css', 'json'];
+  const LANGS = ['plain', 'python', 'javascript', 'java', 'c', 'bash', 'sql', 'go', 'html', 'css', 'json'];
 
   // ── Undo / Redo History Stack ─────────────────────────────────────────────
   let undoStack = [];
@@ -44,6 +45,8 @@ const RichEditor = (() => {
   }
 
   function undo() {
+    clearTimeout(snapshotTimer);
+    pushUndoSnapshot(true);
     if (undoStack.length <= 1) return;
     isUndoRedoAction = true;
     const current = undoStack.pop();
@@ -56,6 +59,7 @@ const RichEditor = (() => {
   }
 
   function redo() {
+    clearTimeout(snapshotTimer);
     if (!redoStack.length) return;
     isUndoRedoAction = true;
     const next = redoStack.pop();
@@ -545,7 +549,71 @@ const RichEditor = (() => {
     sel.addRange(range);
   }
 
+  let slashMenu, slashNode, slashIndex = 0, slashMatches = [];
+  const slashCommands = [
+    ['h1', 'Büyük başlık', 'H1'], ['h2', 'Alt başlık', 'H2'],
+    ['code-block', 'Kod bloğu', '</>'], ['quote', 'Alıntı', '“'],
+    ['info', 'Bilgi kutusu', 'i'], ['image', 'Görsel', '▧'],
+    ['list', 'Madde listesi', '•'],
+    ['terminal', 'Terminal', '>_']
+  ];
+  function closeSlash() { if (slashMenu) slashMenu.hidden = true; }
+  function chooseSlash(index) {
+    const command = slashMatches[index];
+    if (!command || !slashNode?.isConnected) return;
+    pushUndoSnapshot(true);
+    slashNode.innerHTML = '<br>';
+    placeCaretIn(slashNode);
+    savedRange = null;
+    closeSlash();
+    if (command[0] === "list") document.execCommand("insertUnorderedList", false);
+    else execCmd(command[0]);
+    onInput();
+  }
+  function updateSlash() {
+    const selection = getSelection();
+    let node = selection?.anchorNode;
+    if (node?.nodeType === 3) node = node.parentElement;
+    if (!node || node.parentElement !== editorEl || !/^\/[^\n]*$/.test(node.textContent)) { closeSlash(); return; }
+    slashNode = node;
+    const query = node.textContent.slice(1).toLocaleLowerCase('tr');
+    slashMatches = slashCommands.filter(c => (c[0] + ' ' + c[1]).toLocaleLowerCase('tr').includes(query));
+    if (!slashMatches.length) { closeSlash(); return; }
+    if (!slashMenu) {
+      slashMenu = document.createElement('div');
+      slashMenu.className = 'slash-menu';
+      slashMenu.setAttribute('role', 'menu');
+      slashMenu.setAttribute('aria-label', 'Blok ekle');
+      document.getElementById('topic-dialog').append(slashMenu);
+      document.addEventListener('mousedown', e => { if (!slashMenu.contains(e.target)) closeSlash(); });
+    }
+    slashIndex = Math.min(slashIndex, slashMatches.length - 1);
+    slashMenu.replaceChildren(...slashMatches.map((command, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.setAttribute('role', 'menuitem');
+      button.className = index === slashIndex ? 'selected' : '';
+      const icon = document.createElement('span'); icon.textContent = command[2];
+      button.append(icon, document.createTextNode(command[1]));
+      button.onmousedown = event => { event.preventDefault(); chooseSlash(index); };
+      return button;
+    }));
+    slashMenu.hidden = false;
+    const rect = node.getBoundingClientRect();
+    const host = document.getElementById('topic-dialog').getBoundingClientRect();
+    slashMenu.style.left = Math.max(8, Math.min(rect.left - host.left, host.width - 250)) + 'px';
+    slashMenu.style.top = Math.max(8, Math.min(rect.bottom - host.top + 6, host.height - slashMenu.offsetHeight - 12)) + 'px';
+  }
+
   function onEditorKeydown(e) {
+    if (slashMenu && !slashMenu.hidden) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeSlash(); return; }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault(); slashIndex = (slashIndex + (e.key === 'ArrowDown' ? 1 : -1) + slashMatches.length) % slashMatches.length;
+        updateSlash(); return;
+      }
+      if (e.key === 'Enter') { e.preventDefault(); chooseSlash(slashIndex); return; }
+    }
     const isMetaOrCtrl = e.metaKey || e.ctrlKey;
 
     // Undo: Ctrl+Z or Cmd+Z
@@ -621,37 +689,51 @@ const RichEditor = (() => {
     }
   }
 
-  function onPaste(e) {
-    // 1. Direct Clipboard Image / Screenshot paste (e.g. Cmd+Shift+4, copy image from web/Figma)
-    if (e.clipboardData && e.clipboardData.items) {
-      for (const item of e.clipboardData.items) {
-        if (item.type && item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = evt => {
-              createAndInsertImageFigure(evt.target.result, 'Ekran Görüntüsü');
-            };
-            reader.readAsDataURL(file);
-            return;
-          }
-        }
-      }
-    }
-
-    // 2. Direct Clipboard Files (e.g. copied image file from desktop/Finder)
-    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
-      const file = e.clipboardData.files[0];
-      if (file && file.type && file.type.startsWith('image/')) {
-        e.preventDefault();
+  async function pasteImages(files) {
+    const generation = documentGeneration;
+    const selection = window.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    if (!range || !editorEl.contains(range.commonAncestorContainer)) return;
+    // Reserve the insertion point before file decoding finishes.
+    const marker = document.createElement('span');
+    marker.textContent = 'Görsel yükleniyor…';
+    marker.className = 'image-paste-pending';
+    marker.contentEditable = 'false';
+    range.deleteContents();
+    range.insertNode(marker);
+    try {
+      const urls = await Promise.all(files.map(file => new Promise((resolve, reject) => {
+        if (file.size > 15 * 1024 * 1024) return reject(new Error('Görsel en fazla 15 MB olabilir.'));
         const reader = new FileReader();
-        reader.onload = evt => {
-          createAndInsertImageFigure(evt.target.result, file.name);
-        };
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Görsel okunamadı.'));
         reader.readAsDataURL(file);
-        return;
+      })));
+      if (generation !== documentGeneration || !marker.isConnected) return;
+      for (const url of urls) {
+        const insertion = document.createRange();
+        insertion.setStartBefore(marker);
+        insertion.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(insertion);
+        createAndInsertImageFigure(url, '', '100%', marker);
       }
+    } catch (error) {
+      if (generation === documentGeneration && typeof showToast === 'function') showToast(error.message, 'error');
+    } finally {
+      marker.remove();
+      if (generation === documentGeneration) onInput();
+    }
+  }
+
+  function onPaste(e) {
+    const clipboard = e.clipboardData;
+    const files = Array.from(clipboard?.items || []).filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()).filter(Boolean);
+    if (!files.length) files.push(...Array.from(clipboard?.files || []).filter(file => file.type.startsWith('image/')));
+    if (files.length) {
+      e.preventDefault();
+      pasteImages(files);
+      return;
     }
 
     // 3. Text paste handling
@@ -763,6 +845,7 @@ const RichEditor = (() => {
   }
 
   function onInput() {
+    updateSlash();
     if (!editorEl.innerHTML.trim() || editorEl.innerHTML === '<br>') {
       editorEl.innerHTML = '<p><br></p>';
     }
@@ -775,11 +858,13 @@ const RichEditor = (() => {
   function getHTML() {
     const clone = editorEl.cloneNode(true);
     clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
-    clone.querySelectorAll('.image-actions-bar').forEach(el => el.remove());
+    clone.querySelectorAll('.image-actions-bar, .image-paste-pending').forEach(el => el.remove());
     return clone.innerHTML;
   }
 
   function setHTML(html, resetHistory = true) {
+    documentGeneration++;
+    closeSlash();
     if (!html || html.trim() === '') {
       editorEl.innerHTML = '<p><br></p>';
     } else if (!/<[a-z][\s\S]*>/i.test(html)) {
@@ -1094,7 +1179,7 @@ const RichEditor = (() => {
     }
   }
 
-  function createAndInsertImageFigure(url, caption = '', size = '100%') {
+  function createAndInsertImageFigure(url, caption = '', size = '100%', anchor = null) {
     if (!url) return;
     const figure = document.createElement('figure');
     figure.className = 'editor-image-wrap';
@@ -1117,7 +1202,11 @@ const RichEditor = (() => {
     figure.append(img, figcap);
     rehydrateImageBlock(figure);
 
-    replaceSelectionWithBlock(figure);
+    if (anchor?.isConnected) {
+      anchor.before(figure);
+    } else {
+      replaceSelectionWithBlock(figure);
+    }
     pushUndoSnapshot(true);
     onInput();
   }
