@@ -4,12 +4,6 @@
 
 ---
 
-![Dark theme](assets/screenshot-dark.png)
-
-![Pink theme](assets/screenshot-pink.png)
-
----
-
 ## Türkçe
 
 Öğrendiklerinizi, notlarınızı ve ilerlemenizi tek bir yerde takip etmenizi sağlayan Chrome ve Brave tarayıcı eklentisi.
@@ -69,3 +63,9 @@ A Chrome and Brave browser extension to track topics you are learning, take note
 ### License
 
 MIT
+
+## Veri gizliliği / Data privacy
+
+Yeni kurulum boş açılır. Notlar, alanlar ve kişisel yol haritaları kaynak koduna eklenmez; tarayıcının yerel depolamasında tutulur. Notion bağlantısı kullanıcı tarafından etkinleştirilirse veriler o hesaba eşitlenir. Mevcut yerel notlar güncellemede korunur.
+
+Fresh installations start empty. Notes, categories, and personal diagrams are not bundled with source code. Keep exports, recovery files, and private screenshots outside Git.

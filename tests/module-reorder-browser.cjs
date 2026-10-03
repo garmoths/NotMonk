@@ -1,0 +1,81 @@
+const { chromium } = require('playwright');
+const { pathToFileURL } = require('node:url');
+const path = require('node:path');
+
+(async () => {
+  const browser = await chromium.launch({ headless: true, executablePath: process.env.BROWSER_EXECUTABLE });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await page.addInitScript(require('./fixtures.cjs').seed);await page.goto(pathToFileURL(path.resolve('index.html')).href);
+  await page.evaluate(() => { localStorage.clear(); location.reload(); });
+  await page.waitForSelector('.module-card');
+  const cards = page.locator('.module-card');
+  const clickTarget = await cards.nth(0).boundingBox();
+  await page.mouse.move(clickTarget.x + clickTarget.width * .5, clickTarget.y + clickTarget.height * .65);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.waitForTimeout(260);
+  if (await page.locator('.dragging-module').count()) throw new Error('A normal click started delayed dragging');
+  if (await page.locator('body.module-reordering').count()) throw new Error('Normal click left the page in reorder mode');
+  await page.locator('#tab-modules').click();
+  await page.waitForSelector('.module-card');
+  const before = await cards.evaluateAll(nodes => nodes.map(node => node.dataset.category));
+  const first = await cards.nth(0).boundingBox();
+  const third = await cards.nth(2).boundingBox();
+  await page.mouse.move(first.x + first.width / 2, first.y + first.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(220);
+  await page.mouse.move(third.x + third.width * 0.8, third.y + third.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForSelector('.dragging-module', { state: 'detached' });
+  const after = await cards.evaluateAll(nodes => nodes.map(node => node.dataset.category));
+  if (before.join('|') === after.join('|')) throw new Error('Card order did not change');
+  await page.reload();
+  const persisted = await cards.evaluateAll(nodes => nodes.map(node => node.dataset.category));
+  if (after.join('|') !== persisted.join('|')) throw new Error('Card order did not persist');
+  await page.evaluate(async () => {
+    const grid = document.getElementById('modules-grid');
+    const java = [...grid.querySelectorAll('.module-card')].find(card => card.dataset.category.startsWith('14. Java'));
+    const c = [...grid.querySelectorAll('.module-card')].find(card => card.dataset.category.startsWith('15. C Programlama'));
+    grid.prepend(c);
+    grid.prepend(java);
+    await persistModuleOrder();
+  });
+  await page.reload();
+  const languageOrder = await cards.evaluateAll(nodes => nodes.slice(0, 2).map(node => node.dataset.category));
+  if (!languageOrder[0].startsWith('14. Java') || !languageOrder[1].startsWith('15. C Programlama')) throw new Error('Java/C front order did not survive reload');
+  const storedModuleOrder = await page.evaluate(() => JSON.parse(localStorage.getItem('moduleOrder') || '[]'));
+  if (!storedModuleOrder[0]?.startsWith('14. Java') || !storedModuleOrder[1]?.startsWith('15. C Programlama')) throw new Error('Dedicated module order was not stored');
+  const second = await cards.nth(1).boundingBox();
+  const lowerRow = await cards.nth(8).boundingBox();
+  await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(220);
+  await page.mouse.move(lowerRow.x + lowerRow.width / 2, lowerRow.y + lowerRow.height * .8, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForSelector('.dragging-module', { state: 'detached' });
+  const crossRow = await cards.evaluateAll(nodes => nodes.map(node => node.dataset.category));
+  if (new Set(crossRow).size !== before.length || crossRow.length !== before.length) throw new Error('Cross-row move lost or duplicated a card');
+  await page.reload();
+  const a = await cards.nth(0).boundingBox();
+  const b = await cards.nth(1).boundingBox();
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(220);
+  await page.evaluate(() => {
+    window.__reorderMutations = 0;
+    window.__reorderObserver = new MutationObserver(records => {
+      window.__reorderMutations += records.filter(record => record.type === 'childList').length;
+    });
+    window.__reorderObserver.observe(document.getElementById('modules-grid'), { childList: true });
+  });
+  const boundary = (a.x + a.width + b.x) / 2;
+  for (let index = 0; index < 12; index++) {
+    await page.mouse.move(boundary + (index % 2 ? 10 : -10), a.y + a.height / 2);
+  }
+  await page.mouse.up();
+  await page.waitForSelector('.dragging-module', { state: 'detached' });
+  const jitterMutations = await page.evaluate(() => { window.__reorderObserver.disconnect(); return window.__reorderMutations; });
+  if (jitterMutations > 2) throw new Error(`Boundary jitter caused ${jitterMutations} reorder mutations`);
+  console.log('PASS: click cancellation, same-row, cross-row, persistence, uniqueness and boundary-jitter stability');
+  await browser.close();
+})().catch(error => { console.error(error); process.exit(1); });

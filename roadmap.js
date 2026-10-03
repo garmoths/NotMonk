@@ -1,0 +1,9 @@
+// Public builds contain no personal notes, starter lessons, or learning plans.
+const NOTMONK_CATEGORIES = [];
+const NOTMONK_CATEGORIES_META = {};
+const NOTMONK_CATEGORY_ICON_URLS = [];
+const NOTMONK_CAREER_PATHS = [];
+const NOTMONK_ROADMAP = [];
+const RETIRED_CURRICULUM_TITLES = [];
+Object.assign(globalThis, { NOTMONK_CATEGORIES, NOTMONK_CATEGORIES_META,
+  NOTMONK_CATEGORY_ICON_URLS, NOTMONK_CAREER_PATHS, NOTMONK_ROADMAP, RETIRED_CURRICULUM_TITLES });

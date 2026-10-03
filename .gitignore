@@ -2,3 +2,10 @@
 *.DS_Store
 recovery-snapshot.local.js
 /scratch/
+
+# Private data must never be committed.
+*.local.js
+*.local.json
+/backups/
+/exports/
+*.bundle
