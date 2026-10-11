@@ -1,0 +1,29 @@
+.DS_Store
+*.DS_Store
+recovery-snapshot.local.js
+/scratch/
+
+# Private data must never be committed.
+*.local.js
+*.local.json
+/backups/
+/exports/
+*.bundle
+
+# Local assignment outputs and personal roadmap generation helper.
+/output/
+/satir-tabanli-editor/
+/scripts/generate-roadmap.cjs
+
+# Local credentials and private runtime exports.
+.env
+.env.*
+*.local.*
+/.notmonk-backups/
+
+# Python runtime caches.
+__pycache__/
+*.pyc
+
+# Personal area artwork and archived private fixtures.
+/assets/category-icons/

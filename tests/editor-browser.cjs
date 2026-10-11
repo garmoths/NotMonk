@@ -1,0 +1,31 @@
+const { chromium } = require('playwright');
+(async()=>{
+ const browser=await chromium.launch({headless:true, executablePath: process.env.BROWSER_EXECUTABLE || undefined});
+ const page=await browser.newPage({viewport:{width:1280,height:900}});
+ const errors=[];page.on('pageerror', e=>errors.push(e.message));
+ await page.addInitScript(require('./fixtures.cjs').seed);await page.goto(require('node:url').pathToFileURL(require('node:path').resolve('index.html')).href);
+ await page.waitForTimeout(600);
+ await page.evaluate(()=>openForm());
+ await page.locator('#title').fill('Tasarım notları');
+ await page.evaluate(()=>RichEditor.setHTML('<h2>Daha sade bir çalışma alanı</h2><p>Fikirlerini yaz, metni seçerek biçimlendir ve görsellerini doğrudan yapıştır.</p>'));
+ await page.locator('.page-appearance summary').click();
+ await page.locator('#page-cover').selectOption('sand');
+ await page.locator('#page-font').selectOption('serif');
+ await page.locator('.page-appearance summary').click();
+ await page.screenshot({path:'/tmp/notmonk-editor.png'});
+ await page.evaluate(()=>{
+ const ed=document.getElementById('notes-editor');ed.focus();const range=document.createRange();range.selectNodeContents(ed);range.collapse(false);const sel=getSelection();sel.removeAllRanges();sel.addRange(range);
+ const dt=new DataTransfer();for(let i=0;i<2;i++)dt.items.add(new File([Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII='),c=>c.charCodeAt(0))],`image${i}.png`,{type:'image/png'}));ed.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}));
+ });
+ await page.waitForFunction(()=>document.querySelectorAll('#notes-editor figure').length===2);
+ const html=await page.evaluate(()=>RichEditor.getHTML());
+ if(!html.includes('data:image/png;base64')||html.includes('image-paste-pending'))throw Error('Paste serialization failed');
+ await page.locator('#topic-form .save-button').click();
+ await page.evaluate(()=>openForm(state.topics.find(t=>t.title==='Tasarım notları')));
+ if(await page.locator('#notes-editor figure').count()!==2)throw Error('Images not persisted');
+ if(await page.locator('#page-font').inputValue()!=='serif')throw Error('Appearance not persisted');
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'/tmp/notmonk-editor-mobile.png'});
+ if(errors.length)throw Error(errors.join('\n'));
+ console.log('PASS: multi-image paste, serialization, save/reopen, appearance persistence, desktop/mobile render; no runtime errors');
+ await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

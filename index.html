@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NotMonk</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/icon-16.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="assets/icon-128.png">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" sizes="128x128" href="assets/icon-128.png">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="editor.css">
+  <link rel="stylesheet" href="roadmap-board.css">
+  <link rel="stylesheet" href="study-list.css">
+  <link rel="stylesheet" href="obsidian.css">
+</head>
+<body>
+  <nav class="nav-shell">
+    <div class="nav-inner">
+      <a class="brand" href="#"><img class="brand-logo" src="assets/notmonk-logo.png" alt=""><strong>NotMonk</strong></a>
+      <div class="nav-tabs">
+        <button id="tab-modules" class="nav-tab active" type="button">
+          <span>Alanlar</span>
+        </button>
+        <button id="tab-today" class="nav-tab" type="button">
+          <span>Çalıştıklarım</span>
+          <b id="today-count-badge" class="tab-badge">0</b>
+        </button>
+        <button id="tab-roadmap" class="nav-tab" type="button"><span>Roadmap</span></button>
+      </div>
+      <div class="nav-actions">
+        <div id="obsidian-sync-pill" class="obsidian-sync-pill" title="Obsidian aktarım durumu">
+          <button id="obsidian-toggle-btn" class="sync-pill-main" type="button" aria-label="Obsidian ayarları" title="Obsidian ayarları">
+            <span id="obsidian-status-dot" class="obsidian-status-dot" aria-hidden="true"></span>
+            <span class="obsidian-brand-icon" aria-hidden="true">◇</span>
+            <span id="obsidian-status-text" class="sync-pill-label">Obsidian</span>
+          </button>
+          <button id="quick-sync-btn" class="sync-pill-action" type="button" title="Obsidian’a şimdi aktar" aria-label="Obsidian’a şimdi aktar">
+            <svg class="ui-icon sync-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+          </button>
+        </div>
+        <button id="theme-toggle" class="nav-icon-btn theme-toggle" type="button" aria-label="Temayı değiştir" title="Tema değiştir">
+          <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" stroke="none"/></svg>
+          <span class="sr-only" id="theme-label">Pembe tema</span>
+        </button>
+        <button id="expand-tab" class="nav-icon-btn expand-btn" type="button" aria-label="Tam ekranda aç" title="Tam sekmede aç"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4"/></svg></button>
+      </div>
+    </div>
+  </nav>
+  <main class="app-shell">
+    <section class="dashboard-head">
+      <div class="dashboard-title-wrap">
+        <button id="back-to-modules" class="back-btn hidden" type="button" title="Alanlara Geri Dön">
+          <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 5-7 7 7 7M7 12h14"/></svg>
+          <span>Tüm Alanlar</span>
+        </button>
+        <div>
+          <span id="page-section-code" class="section-code">MÜFREDAT & ALANLAR</span>
+          <div class="page-title-row">
+            <button id="page-title-avatar" class="page-title-avatar hidden" type="button" title="Profil Fotoğrafını Değiştir"></button>
+            <h1 id="page-title">Çalışma Alanları</h1>
+          </div>
+        </div>
+      </div>
+      <select id="sort-select" class="hidden" aria-hidden="true"><option value="updatedAt-desc">Elle sıralama</option></select>
+    </section>
+
+    <section class="workspace">
+      <section id="roadmap-view" class="hidden" aria-label="Roadmap çizim alanı">
+        <header class="rm-toolbar">
+          <div class="rm-board-title"><span class="rm-board-symbol" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="2" width="8" height="5" rx="1.5"/><rect x="2" y="17" width="7" height="5" rx="1.5"/><rect x="15" y="17" width="7" height="5" rx="1.5"/><path d="M12 7v5M5.5 17v-5h13v5"/></svg></span><div><strong>Öğrenme haritam</strong><span id="rm-count">0 kart · 0 bağlantı</span></div></div>
+          <div class="rm-tools">
+            <div class="rm-toolgroup" aria-label="Düzenleme araçları">
+            <button id="rm-undo" type="button" title="Geri al (⌘/Ctrl Z)" aria-label="Geri al" disabled>↶</button>
+            <button id="rm-redo" type="button" title="Yinele (⌘/Ctrl Shift Z)" aria-label="Yinele" disabled>↷</button>
+            <button id="rm-delete" type="button" disabled>Seçileni kaldır</button>
+            </div><div class="rm-toolgroup" aria-label="Ölçek araçları">
+            <button id="rm-zoom-out" type="button" aria-label="Uzaklaştır">−</button>
+            <button id="rm-zoom-value" type="button" title="%80 ölçeğe dön (0)" aria-label="Ölçeği yüzde 80 yap">80%</button>
+            <button id="rm-zoom-in" type="button" aria-label="Yakınlaştır">+</button>
+            </div>
+            <button id="rm-reading" type="button" title="Seçili karta veya şemanın başına okunaklı ölçekte dön">Okuma görünümü</button>
+            <button id="rm-fit" type="button">Tümünü gör</button>
+          </div>
+        </header>
+        <div class="rm-workspace">
+          <aside class="rm-sidebar" aria-label="Roadmap'e eklenecek başlıklar">
+            <div class="rm-sidebar-heading"><span class="rm-eyebrow">KÜTÜPHANE</span><strong>Bir sonraki adımın</strong><p>Bir başlık seç. Yolunu kendin çiz.</p></div>
+            <div class="rm-library-tabs"><button id="rm-areas" class="active" type="button" aria-pressed="true">Alanlar</button><button id="rm-topics" type="button" aria-pressed="false">Konular</button></div>
+            <input id="rm-search" type="search" placeholder="Başlık ara…" aria-label="Roadmap başlıklarında ara">
+            <select id="rm-category" aria-label="Roadmap alan filtresi"><option value="">Tüm alanlar</option></select>
+            <span id="rm-library-count"></span>
+            <div id="rm-library"></div>
+          </aside>
+          <div id="rm-viewport" tabindex="0" aria-label="Şema tuvali">
+            <div id="rm-space"><div id="rm-surface">
+              <svg id="rm-edges" width="1400" height="1000" aria-label="Kart bağlantıları"></svg>
+              <div id="rm-nodes"></div>
+            </div></div>
+            <div id="rm-empty"><span>◇ → ◇</span><h2>Her yol bir başlıkla başlar.</h2><p>Soldan bir alan veya konu ekle.<br>Kartları yerleştir, noktalarından birbirine bağla.</p></div>
+          </div>
+        </div>
+        <footer class="rm-footer"><span id="rm-hint">Kartları taşı · Alt noktadan üst noktaya bağla</span><button id="rm-save-status" type="button" aria-live="polite" title="Kaydetmeyi tekrar dene">Kaydedildi · Bu cihazda</button></footer>
+      </section>
+      <!-- 1. Seviye: Alan / Modül Kartları Izgarası -->
+      <section id="modules-view" class="modules-view">
+        <div id="modules-grid" class="modules-grid"></div>
+      </section>
+
+      <!-- 2. Seviye: Seçilen Modülün veya Bugünün Konuları -->
+      <section id="topics-view" class="topics-view hidden">
+        <section id="study-list" class="study-list hidden" aria-label="Şu an çalıştıklarım"></section>
+        <section id="area-workspace" class="area-workspace hidden" aria-label="Alan notları">
+          <aside class="note-tree-panel">
+            <header class="note-tree-header">
+              <div><strong id="note-tree-title">Sayfalar</strong><span id="note-tree-count">0 sayfa</span></div>
+              <div class="note-tree-header-actions">
+                <button id="area-switch-to-board-btn" class="area-view-toggle-btn" type="button" title="4'lü Çalışma Panosuna geç (Kanban)" aria-label="Pano Görünümü">
+                  <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="18" rx="1.5"/></svg>
+                  <span>Pano</span>
+                </button>
+                <button id="add-root-note" type="button" title="Yeni ana sayfa" aria-label="Yeni ana sayfa ekle">＋</button>
+              </div>
+            </header>
+            <div id="note-tree-list" class="note-tree-list"></div>
+            <button id="recover-pages-btn" class="recover-pages-btn" type="button">Önceki kayıtlardan sayfa kurtar</button>
+          </aside>
+          <section class="note-document-panel">
+            <div id="note-document-empty" class="note-document-empty">
+              <span class="empty-document-icon">◇</span>
+              <strong>Bir sayfa seç</strong>
+              <p>Soldaki sayfalardan birini aç veya yeni bir sayfa oluştur.</p>
+              <button id="empty-new-note" class="primary" type="button">＋ Yeni sayfa</button>
+            </div>
+            <div id="inline-editor-host" class="inline-editor-host"></div>
+          </section>
+        </section>
+        <div class="control-bar-header">
+          <button id="clear-filters" class="clear-filters-link" type="button">Filtreleri temizle</button>
+        </div>
+        <div class="control-bar">
+          <label class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Konu veya not ara"></label>
+          <label class="control-select"><span>DURUM</span><select id="status-filter">
+            <option value="all">Tüm Durumlar</option>
+            <option value="todo">Yapılacaklar</option>
+            <option value="in_progress">Yapılıyor Olanlar</option>
+            <option value="done">Yapılmış Olanlar</option>
+            <option value="review">Tekrar Edilmesi Gerekenler</option>
+          </select></label>
+          <div class="view-mode-group" role="group" aria-label="Görünüm modu">
+            <button id="view-mode-board" class="view-mode-btn active" type="button" title="Pano Görünümü (Kanban)" aria-label="Pano Görünümü">
+              <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="18" rx="1.5"/></svg>
+              <span>Pano</span>
+            </button>
+            <button id="view-mode-table" class="view-mode-btn" type="button" title="Tablo Görünümü" aria-label="Tablo Görünümü">
+              <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+              <span>Tablo</span>
+            </button>
+          </div>
+        </div>
+        <div class="result-line">
+          <span><b id="result-count">0</b> konu gösteriliyor</span>
+          <button id="add-topic-btn" class="primary area-add-topic-btn" type="button">＋ Konu Ekle</button>
+        </div>
+        <section id="empty-state" class="empty hidden">
+          <span>＋</span>
+          <h2>Bu alanda henüz konu yok</h2>
+          <p>İlk konunu ekleyerek başla.</p><button id="empty-add" class="primary">İlk konuyu ekle</button>
+        </section>
+        <section id="today-empty" class="empty hidden">
+          <span class="empty-doodle-icon"><svg class="doodle-btn-icon doodle-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2.5 2.9 6.2 6.6.9-4.9 4.6 1.3 6.6-5.9-3.3-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.9L12 2.5Z"/></svg></span>
+          <h2>Bugün için seçili konu yok</h2>
+          <p>Modüllerdeki konuların yanındaki yıldız simgesine basarak buraya ekleyebilirsin veya yukarıdan "Tüm Müfredat" panosuna geçebilirsin.</p>
+          <button id="switch-to-all-btn" class="secondary" type="button">Alanlara Git</button>
+        </section>
+        <section id="no-results" class="empty hidden">
+          <span>⌕</span>
+          <h2>Sonuç bulunamadı</h2>
+          <p>Aramanı veya filtrelerini değiştirmeyi dene.</p>
+        </section>
+
+        <!-- Bugün ve Çalışma Panosu Görünümü -->
+        <section id="today-focus" class="today-focus-shell hidden" aria-label="Bugünün konuları ve çalışma panosu">
+          <div class="board-toolbar">
+            <div class="board-toolbar-summary">
+              <p id="today-summary" role="status"></p>
+            </div>
+            <div class="board-toolbar-controls">
+              <button id="open-topic-picker-btn" class="primary board-add-btn" type="button" title="Müfredattan çalışmak istediğin konuları seçip panoya ekle">
+                <svg class="doodle-btn-icon doodle-star" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="m12 2.5 2.9 6.2 6.6.9-4.9 4.6 1.3 6.6-5.9-3.3-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.9L12 2.5Z"/></svg>
+                <span>⭐ Konu Seç / Ekle</span>
+              </button>
+              <div class="board-scope-toggle" role="group" aria-label="Pano kapsamı">
+                <button id="board-scope-today" class="scope-btn active" type="button" title="Bugüne planlanan veya yıldızla seçilen konuları göster">
+                  <svg class="doodle-btn-icon doodle-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2.5 2.9 6.2 6.6.9-4.9 4.6 1.3 6.6-5.9-3.3-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.9L12 2.5Z"/></svg>
+                  <span>Bugünün Odakları</span>
+                </button>
+                <button id="board-scope-all" class="scope-btn" type="button" title="Tüm müfredattaki konuları 4 sütunlu panoda göster">
+                  <svg class="doodle-btn-icon doodle-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M12 3a13 13 0 0 0 0 18M12 3a13 13 0 0 1 0 18"/></svg>
+                  <span>Tüm Müfredat</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="kanban-board" class="kanban-board"></div>
+          <div id="today-list" class="hidden"></div>
+        </section>
+
+        <!-- Alan İçi Kanban Panosu -->
+        <section id="kanban-view" class="kanban-shell hidden" aria-label="Alan panosu">
+          <div class="board-toolbar">
+            <div class="board-toolbar-summary">
+              <p id="area-board-summary" role="status"></p>
+            </div>
+            <div class="board-toolbar-controls">
+              <button id="area-switch-to-tree-btn" class="area-view-toggle-btn" type="button" title="Sayfa ağacına geç">
+                <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+                <span>Sayfalar &amp; Notlar</span>
+              </button>
+              <button id="area-add-topic-btn" class="primary area-add-topic-btn" type="button">＋ Konu Ekle</button>
+            </div>
+          </div>
+          <div id="kanban-view-board" class="kanban-board"></div>
+        </section>
+        <section id="table-view" class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th class="drag-head"></th>
+                <th class="number-head">#</th>
+                <th>KONU</th>
+                <th class="area-column">ALAN</th>
+                <th class="status-head">DURUM</th>
+                <th>NOT</th>
+                <th>GÜNCELLEME</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="topic-table-body"></tbody>
+          </table>
+        </section>
+        <nav id="pagination" class="pagination" aria-label="Konu sayfaları"></nav>
+      </section>
+    </section>
+  </main>
+  <dialog id="topic-dialog" class="topic-page">
+    <form id="topic-form" method="dialog" name="topic-form">
+      <header class="editor-header">
+        <div>
+          <p class="eyebrow">NotMonk / Notlar</p>
+          <h2 id="dialog-title">Konu ekle</h2>
+        </div>
+        <div class="editor-header-actions">
+          <span id="save-hint" role="status">Değişiklikler kaydedilmedi</span>
+          <details class="page-appearance"><summary aria-label="Not görünümü" title="Not görünümü"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></summary><div class="appearance-panel">
+            <strong>Sayfa görünümü</strong>
+            <label>Yazı tipi<select id="page-font"><option value="sans">Modern</option><option value="serif">Kitap</option><option value="mono">Monospace</option></select></label>
+            <label><input id="page-wide" type="checkbox"> Tam genişlik</label>
+            <label><input id="page-small" type="checkbox"> Küçük metin</label>
+            <label>Kapak<select id="page-cover"><option value="none">Kapaksız</option><option value="sand">Kum</option><option value="sky">Gökyüzü</option><option value="rose">Gül</option></select></label>
+          </div></details>
+          <button id="toggle-editor-expand" class="icon-button expand-modal-btn" type="button" aria-label="Tam ekranı değiştir" title="Tam ekranı değiştir"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4"/></svg></button>
+          <button id="close-dialog" class="icon-button" type="button" aria-label="Kapat" title="Kapat"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+        </div>
+      </header><input id="edit-id" type="hidden">
+      <div class="editor-layout"><div class="document-cover" aria-hidden="true"></div>
+        <aside class="topic-sidebar">
+          <label class="document-title"><span class="sr-only">Konu başlığı</span><input id="title" maxlength="120" placeholder="Başlıksız"></label>
+          <div class="category-field">
+            <div class="field-label-row"><span>ALAN</span><button id="toggle-category-manager" type="button" aria-expanded="false"><i>＋</i><b>Alanları yönet</b></button></div>
+            <select id="category"></select>
+            <section id="category-manager" class="category-manager">
+              <div class="manager-heading"><div><b>Alanların</b><span id="category-count">0 alan</span></div><small>Kullanılan alanlar korunur</small></div>
+              <div class="add-category"><input id="new-category" maxlength="30" placeholder="Yeni bir alan yaz…"><button id="add-category" type="button"><span>＋</span> Ekle</button></div>
+              <div id="category-list" class="category-list"></div>
+            </section>
+          </div>
+          <select id="parent-topic" class="hidden" aria-hidden="true"><option value="">Alan ana sayfası</option></select>
+          <input id="resource" class="hidden" type="hidden">
+          <section class="editor-status">
+            <span>DURUM</span>
+            <div id="editor-status-buttons" class="status-buttons"></div>
+          </section>
+        </aside>
+        <div id="editor-resizer" class="editor-resizer" title="Genişletmek için sağa/sola sürükle"></div>
+        <section class="notes-editor">
+          <div class="notes-toolbar">
+            <div class="notes-toolbar-meta">
+              <span><b id="note-count">0</b> karakter</span>
+            </div>
+          </div>
+          <div class="editor-content-wrapper">
+            <!-- Editor Floating Selection Toolbar -->
+            <div id="editor-toolbar" class="editor-floating-toolbar hidden">
+              <div class="float-group">
+                <button type="button" class="float-btn" data-cmd="h1" title="Büyük Başlık (H1)">H1</button>
+                <button type="button" class="float-btn" data-cmd="h2" title="Orta Başlık (H2)">H2</button>
+              </div>
+              <div class="float-divider"></div>
+              <div class="float-group">
+                <button type="button" class="float-btn" data-cmd="bold" title="Kalın (Ctrl+B)"><b>B</b></button>
+                <button type="button" class="float-btn" data-cmd="italic" title="İtalik (Ctrl+I)"><i>I</i></button>
+                <button type="button" class="float-btn" data-cmd="strike" title="Üstü Çizili"><s>S</s></button>
+                <button type="button" class="float-btn" data-cmd="link" title="Bağlantı Ekle (Ctrl+K)"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+                <button type="button" class="float-btn" data-cmd="image" title="Görsel Ekle"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></button>
+                <button type="button" class="float-btn" data-cmd="inline-code" title="Satır İçi Kod">&lt;/&gt;</button>
+              </div>
+              <div class="float-divider"></div>
+              <div class="float-group">
+                <button type="button" class="float-btn float-block-btn" data-cmd="code-block" title="Seçimi Kod Bloğuna Dönüştür">
+                  <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Kod
+                </button>
+                <button type="button" class="float-btn float-block-btn" data-cmd="terminal" title="Seçimi Terminal Komutuna Dönüştür">
+                  <span class="float-icon">$</span> Terminal
+                </button>
+                <button type="button" class="float-btn float-block-btn" data-cmd="quote" title="Alıntıya Dönüştür">
+                  <span class="float-icon">”</span> Alıntı
+                </button>
+                <button type="button" class="float-btn float-block-btn" data-cmd="info" title="İpucuna Dönüştür">
+                  <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7Z"/></svg> İpucu
+                </button>
+              </div>
+              <div class="float-divider"></div>
+              <div class="float-group float-colors">
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#6c8ef0" title="İndigo"><span class="color-dot" style="background:#6c8ef0"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#34d399" title="Yeşil"><span class="color-dot" style="background:#34d399"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#fbbf24" title="Sarı"><span class="color-dot" style="background:#fbbf24"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#f87171" title="Kırmızı"><span class="color-dot" style="background:#f87171"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#f472b6" title="Pembe"><span class="color-dot" style="background:#f472b6"></span></button>
+                <button type="button" class="float-btn float-color" data-cmd="color" data-val="#e9edef" title="Varsayılan"><span class="color-dot" style="background:#e9edef"></span></button>
+              </div>
+            </div>
+            <!-- Editor Floating Link Popover -->
+            <div id="editor-link-popover" class="editor-popover hidden">
+              <div class="popover-row">
+                <span class="popover-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+                <input type="url" id="link-url-input" class="popover-input" placeholder="Bağlantı linki yapıştır (https://...)" autocomplete="off">
+                <button type="button" id="link-apply-btn" class="popover-btn primary-btn">Ekle</button>
+                <button type="button" id="link-unlink-btn" class="popover-btn secondary-btn hidden" title="Bağlantıyı Kaldır">Kaldır</button>
+                <button type="button" id="link-cancel-btn" class="popover-close-btn" title="Kapat">✕</button>
+              </div>
+            </div>
+            <!-- Editor Image Inserter Popover -->
+            <div id="editor-image-popover" class="editor-popover image-popover hidden">
+              <div class="popover-header">
+                <span class="popover-title"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg> Görsel Ekle</span>
+                <button type="button" id="img-pop-close" class="popover-close-btn" title="Kapat">✕</button>
+              </div>
+              <div class="image-popover-content">
+                <input type="file" id="note-image-file-input" accept="image/*" style="display: none;">
+                <button type="button" id="img-upload-btn" class="image-upload-trigger">
+                  <span class="upload-icon"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+                  <div class="upload-text">
+                    <b class="upload-title">Bilgisayardan Görsel Seç</b>
+                    <span class="upload-sub">PNG, JPG, GIF, WebP (veya direkt sürükle / yapıştır)</span>
+                  </div>
+                </button>
+                <div class="popover-or-divider"><span>veya web bağlantısı</span></div>
+                <div class="popover-row">
+                  <input type="url" id="img-url-input" class="popover-input" placeholder="https://.../gorsel.png" autocomplete="off">
+                  <button type="button" id="img-url-apply-btn" class="popover-btn primary-btn">Ekle</button>
+                </div>
+                <input type="text" id="img-caption-input" class="popover-input popover-sub-input" placeholder="Açıklama / Başlık (isteğe bağlı)" autocomplete="off">
+              </div>
+            </div>
+            <div id="editor-drop-zone" class="editor-drop-zone hidden">
+              <div class="drop-zone-badge">↓ Görseli buraya bırak</div>
+            </div>
+            <div id="notes-editor" class="rich-notes-area" role="textbox" aria-label="Not içeriği" aria-multiline="true" contenteditable="true" spellcheck="true" data-placeholder="Notlarını buraya yaz…&#10;/ ile başlık, liste, kod veya görsel ekle"></div>
+            <textarea id="notes" class="hidden"></textarea>
+          </div>
+        </section>
+      </div>
+      <footer class="editor-footer">
+        <button id="delete-topic" class="danger hidden" type="button">Sayfayı sil</button><div class="footer-spacer"></div><button id="cancel-dialog" class="secondary cancel-button" type="button">Kapat</button><button class="primary save-button" type="submit">Değişiklikleri kaydet</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="obsidian-dialog" class="obsidian-dialog">
+    <header class="dialog-header"><div><h2>Obsidian</h2><p>NotMonk’ta kaydet, kasanda otomatik gör.</p></div><button id="close-obsidian-dialog" class="icon-button" type="button" aria-label="Kapat">×</button></header>
+    <div class="obsidian-dialog-body">
+      <label class="obsidian-field">Bağlı kasa<input id="obsidian-vault" type="text" readonly value="Bağlantı kontrol ediliyor…"></label>
+      <label class="obsidian-auto"><input id="obsidian-auto-sync" type="checkbox" checked><span><b>Otomatik aktar</b><small>Sayfalar, alanlar ve çalışma listen kaydettikçe Obsidian’a aktarılır.</small></span></label>
+      <p class="obsidian-help">Aktarım yönü: NotMonk → Obsidian. Kasada düzenlediğin dosyalar korunur; çakışan yeni sürümler “NotMonk Aktarım Kopyaları” klasörüne gelir. Burada sildiğin notlar kasadan silinmez.</p>
+      <p id="obsidian-status-msg" class="obsidian-status-msg" role="status" aria-live="polite">Bağlantı kontrol ediliyor…</p>
+      <div class="obsidian-buttons"><button id="obsidian-sync-now" class="primary" type="button">Şimdi aktar</button><a id="obsidian-open-vault" class="secondary hidden">Kasayı aç ↗</a></div>
+    </div>
+  </dialog>
+  <dialog id="new-category-dialog" class="new-category-dialog">
+    <form id="new-category-form" onsubmit="return false;">
+      <header class="dialog-header">
+        <div class="dialog-title-wrap">
+          <span class="dialog-icon-badge">+</span>
+          <div>
+            <h2>Yeni Çalışma Alanı</h2>
+            <p>Yeni bir modül ekle, ardından konularını oluştur.</p>
+          </div>
+        </div>
+        <button id="close-new-category-dialog" class="icon-button" type="button" aria-label="Kapat">✕</button>
+      </header>
+      <div class="mini-dialog-body">
+        <div class="new-area-avatar-row">
+          <button type="button" id="new-category-avatar-btn" class="new-category-avatar-btn" title="Simge / Fotoğraf Seç">
+            <span id="new-category-avatar-preview">
+              <svg class="doodle-btn-icon doodle-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6.5A1.5 1.5 0 0 1 5 5h4.5l2 2.5H19a1.5 1.5 0 0 1 1.5 1.5v9.5A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5V6.5Z"/></svg>
+            </span>
+            <span class="avatar-edit-overlay"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>
+          </button>
+          <div class="new-area-avatar-label">
+            <span>ALAN PROFİLİ / SİMGESİ</span>
+            <small>Tıklayarak fotoğraf yükle veya çizim simge seç</small>
+          </div>
+        </div>
+        <label class="modal-field">
+          <span>Alan / Modül Adı</span>
+          <input id="modal-category-input" maxlength="60" placeholder="Örn: Mobil Uygulama Güvenliği" autocomplete="off">
+        </label>
+      </div>
+      <footer class="dialog-footer">
+        <button id="cancel-new-category" class="secondary" type="button">Vazgeç</button>
+        <button id="submit-new-category" class="primary" type="button">Oluştur →</button>
+      </footer>
+    </form>
+  </dialog>
+  <dialog id="area-avatar-dialog" class="area-avatar-dialog">
+    <div class="avatar-dialog-content">
+      <header class="dialog-header">
+        <div class="dialog-title-wrap">
+          <span class="dialog-icon-badge">
+            <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          </span>
+          <div>
+            <h2 id="avatar-dialog-title">Alan Profil Fotoğrafı</h2>
+            <p id="avatar-dialog-sub">Profil fotoğrafı veya çizim simge belirle.</p>
+          </div>
+        </div>
+        <button id="close-avatar-dialog" class="icon-button" type="button" aria-label="Kapat">✕</button>
+      </header>
+      
+      <div class="avatar-dialog-body">
+        <div class="avatar-preview-section">
+          <div id="avatar-big-preview" class="avatar-big-preview">
+            <span id="avatar-big-preview-content">
+              <svg class="doodle-btn-icon doodle-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6.5A1.5 1.5 0 0 1 5 5h4.5l2 2.5H19a1.5 1.5 0 0 1 1.5 1.5v9.5A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5V6.5Z"/></svg>
+            </span>
+          </div>
+          <div class="avatar-upload-actions">
+            <input type="file" id="avatar-file-input" accept="image/*" class="hidden">
+            <button type="button" id="avatar-upload-btn" class="primary avatar-btn">
+              <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+              <span>Bilgisayardan Fotoğraf Yükle</span>
+            </button>
+            <button type="button" id="avatar-remove-btn" class="secondary avatar-btn danger-text">
+              ✕ Fotoğrafı Kaldır
+            </button>
+          </div>
+        </div>
+
+        <div class="avatar-url-row">
+          <label class="modal-field">
+            <span>VEYA GÖRSEL BAĞLANTISI (URL)</span>
+            <div class="input-with-action">
+              <input id="avatar-url-input" type="url" placeholder="https://... görsel linki">
+              <button type="button" id="avatar-apply-url-btn" class="secondary">Uygula</button>
+            </div>
+          </label>
+        </div>
+
+        <div class="avatar-emoji-section">
+          <span class="section-label">VEYA ÇİZİM / DOODLE SİMGE SEÇ</span>
+          <div class="avatar-emoji-grid">
+            <button type="button" class="avatar-emoji-btn" data-preset="shield" title="Güvenlik &amp; Savunma"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="terminal" title="Terminal &amp; Shell"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="cpu" title="Sistem &amp; İşlemci"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="network" title="Ağ &amp; Protokoller"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="bug" title="Zararlı Yazılım &amp; Zafiyet"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="14" x="8" y="6" rx="4"/><path d="m19 7-3 2M5 7l3 2M19 19l-3-2M5 19l3-2M20 13h-4M4 13h4M10 4l1 2M14 4l-1 2"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="radar" title="Tehdit Avı &amp; Radar"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="lock" title="Kriptografi &amp; Secret"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="search" title="Adli Bilişim &amp; DFIR"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="code" title="C &amp; Düşük Seviye Kod"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="spark" title="Yapay Zeka &amp; LLM"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="folder" title="Klasör &amp; Modül"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5A1.5 1.5 0 0 1 5 5h4.5l2 2.5H19a1.5 1.5 0 0 1 1.5 1.5v9.5A1.5 1.5 0 0 1 19 20H5a1.5 1.5 0 0 1-1.5-1.5V6.5Z"/></svg></button>
+            <button type="button" class="avatar-emoji-btn" data-preset="star" title="Öncelikli Hedef"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2.5 2.9 6.2 6.6.9-4.9 4.6 1.3 6.6-5.9-3.3-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.9L12 2.5Z"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <footer class="dialog-footer">
+        <button id="cancel-avatar-dialog" class="secondary" type="button">İptal</button>
+        <button id="save-avatar-btn" class="primary" type="button">Kaydet</button>
+      </footer>
+    </div>
+  </dialog>
+  <!-- Hızlı Konu Seçici (Müfredattan Panoya Ekle) Modalı -->
+  <dialog id="topic-picker-dialog" class="topic-picker-dialog">
+    <div class="topic-picker-content">
+      <header class="dialog-header">
+        <div class="dialog-title-wrap">
+          <span class="dialog-icon-badge">
+            <svg class="doodle-btn-icon doodle-star" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><path d="m12 2.5 2.9 6.2 6.6.9-4.9 4.6 1.3 6.6-5.9-3.3-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.9L12 2.5Z"/></svg>
+          </span>
+          <div>
+            <h2>Panoya Konu Ekle</h2>
+            <p>Müfredattaki 12 aşamadan çalışmak istediğin konuları yıldızla veya yeni konu oluştur.</p>
+          </div>
+        </div>
+        <button id="close-topic-picker" class="icon-button" type="button" aria-label="Kapat">✕</button>
+      </header>
+      <div class="topic-picker-body">
+        <div class="topic-picker-toolbar">
+          <div class="picker-search-wrap">
+            <svg class="ui-icon picker-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="picker-search-input" type="search" placeholder="Konu ara... (örn: pointer, tcp, reverse, ghidra, buffer)" autocomplete="off">
+          </div>
+          <span id="picker-selected-count" class="picker-count-badge">0 seçili</span>
+        </div>
+        <div id="picker-topics-list" class="picker-topics-list"></div>
+      </div>
+      <footer class="dialog-footer">
+        <button id="picker-add-custom-btn" class="secondary" type="button">＋ Yeni Özel Konu</button>
+        <button id="picker-done-btn" class="primary" type="button">Tamam</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="confirm-dialog" class="confirm-dialog"><div class="confirm-icon">!</div><h2 id="confirm-title">Emin misin?</h2><p id="confirm-message"></p><div class="confirm-actions"><button id="confirm-cancel" class="secondary" type="button">Geri dön</button><button id="confirm-accept" class="confirm-danger" type="button">Onayla</button></div></dialog>
+  <script src="prism.js"></script>
+  <script src="prism-langs.js"></script>
+  <script src="prism-java.js"></script>
+  <script src="recovery-snapshot.js"></script>
+  <script src="editor-rich.js"></script>
+  <script src="editor-page.js"></script>
+  <script src="obsidian-local-config.local.js"></script>
+  <script src="obsidian-client.js"></script>
+  <script src="obsidian-settings.js"></script>
+  <script src="roadmap.js"></script>
+  <script src="curriculum-areas.js"></script>
+  <script src="foundations-outline.js"></script>
+  <script src="foundations-model.js"></script>
+  <script src="roadmap-board.js"></script>
+  <script src="study-list-model.js"></script>
+  <script src="study-list.js"></script>
+  <script src="page-recovery-model.js"></script>
+  <script src="page-recovery.js"></script>
+  <script src="app.js?v=20261011-single-status"></script>
+</body>
+</html>

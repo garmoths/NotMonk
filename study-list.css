@@ -1,0 +1,70 @@
+/* Three simple progress columns; no calendar or daily-plan requirements. */
+.study-list { display:grid; gap:22px; }
+.study-list-intro { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; }
+.study-list-intro p { margin:0; font-size:13px; color:var(--muted); }
+.study-list-tools { display:flex; gap:10px; flex-wrap:wrap; }
+.study-list-bar { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.study-list-bar input { width:280px; max-width:100%; padding:11px 13px; border:1px solid var(--line2); border-radius:9px; background:var(--panel); color:var(--text); font:inherit; }
+.study-list-summary { color:var(--muted); font-size:12px; }
+.study-work-board.kanban-board { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+.study-work-board .kanban-column { min-width:0; }
+.study-work-board .kanban-cards { min-height:240px; }
+.study-work-board .kanban-empty { text-align:center; padding:30px 18px; line-height:1.8; }
+.study-column-mark { display:grid; place-items:center; width:27px; height:27px; border-radius:8px; font-size:20px; background:var(--accent-soft); color:var(--accent); }
+.study-column.status-review .study-column-mark { color:#d9a152; background:#d9a15215; }
+.study-column.status-done .study-column-mark { color:var(--success); background:color-mix(in srgb,var(--success) 10%,transparent); }
+.study-work-card { padding:18px; cursor:grab; }
+.study-item-kind { display:block; color:var(--muted); font-size:11px; line-height:1.6; margin-bottom:8px; overflow-wrap:anywhere; }
+.study-work-title { margin:0; font-size:16px; line-height:1.5; overflow-wrap:anywhere; }
+.study-work-note { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--muted); font-size:12px; line-height:1.7; margin:12px 0; max-height:170px; overflow:auto; }
+.study-work-controls { margin:18px 0 12px; }
+.study-work-controls select { width:100%; padding:9px 11px; border:1px solid var(--line2); border-radius:7px; background:var(--bg); color:var(--text); font:inherit; font-size:12px; cursor:pointer; }
+.study-work-actions { display:flex; flex-wrap:wrap; gap:8px; border-top:1px solid var(--line); padding-top:12px; }
+.study-work-actions button { font-size:11px; padding:7px 9px; }
+.study-text-btn, .study-icon-btn { background:transparent; color:var(--muted); border:1px solid transparent; border-radius:7px; cursor:pointer; padding:8px 10px; font:inherit; }
+.study-text-btn:hover, .study-icon-btn:hover { color:var(--text); background:var(--accent-soft); }
+.study-archive { font-size:12px; border-top:1px solid var(--line); padding-top:20px; color:var(--muted); }
+.study-archive summary { cursor:pointer; }
+.study-archive-row { display:flex; justify-content:space-between; gap:20px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); }
+.study-archive-row span { overflow-wrap:anywhere; }
+.study-archive-row button { white-space:nowrap; }
+.study-local-note { font-size:11px; color:var(--muted); margin:0; }
+.study-item-dialog { box-sizing:border-box; width:min(560px,calc(100vw - 28px)); max-height:90vh; border:1px solid var(--line2); border-radius:14px; background:var(--panel); color:var(--text); padding:24px; box-shadow:0 22px 90px #0006; }
+.study-item-dialog::backdrop { background:#030812aa; backdrop-filter:blur(4px); }
+.study-item-dialog header { display:flex; justify-content:space-between; align-items:start; gap:15px; margin-bottom:20px; }
+.study-item-dialog h2 { margin:0; font-size:20px; }
+.study-item-dialog-body { display:grid; gap:18px; }
+.study-field { display:grid; gap:8px; font-size:12px; color:var(--muted); }
+.study-field input, .study-field select, .study-field textarea, .study-item-dialog input[type=search] { min-width:0; width:100%; box-sizing:border-box; padding:11px; background:var(--bg); color:var(--text); border:1px solid var(--line2); border-radius:8px; font:inherit; font-size:14px; }
+.study-field textarea { resize:vertical; line-height:1.6; }
+.study-item-dialog footer { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
+.study-item-error { color:var(--danger); font-size:12px; line-height:1.6; }
+.study-item-error:empty { display:none; }
+.study-page-picker { max-height:400px; overflow:auto; display:grid; gap:7px; }
+.study-pick-row { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--bg); cursor:pointer; }
+.study-pick-row input { accent-color:var(--accent); flex-shrink:0; }
+.study-pick-row span { min-width:0; }
+.study-pick-row strong { display:block; font-size:13px; font-weight:500; line-height:1.5; overflow-wrap:anywhere; }
+.study-pick-row small { display:block; color:var(--muted); font-size:11px; margin-top:3px; }
+.study-help { color:var(--muted); font-size:12px; line-height:1.7; margin:0; }
+.study-list :is(button,input,select):focus-visible, .study-item-dialog :focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+#topics-view.study-mode > :not(#study-list) { display:none!important; }
+#topics-view.study-mode #study-list { display:grid!important; }
+/* Areas always open their document tree. */
+#area-switch-to-board-btn { display:none; }
+@media(max-width:1000px) { .study-work-board.kanban-board { gap:12px; } .study-work-card { padding:14px; } .study-work-board .kanban-column-header { padding:14px 10px; } .study-work-board .kanban-column-title { font-size:13px; } }
+@media(max-width:700px) {
+  .study-work-board.kanban-board { grid-template-columns:1fr; }
+  .study-work-board .kanban-cards { min-height:100px; }
+  .study-list-bar { align-items:start; flex-direction:column; gap:12px; }
+  .study-list-bar input { width:100%; }
+  .nav-shell { height:auto; min-height:68px; }
+  .nav-inner { flex-wrap:wrap; gap:10px; padding:10px 0; }
+  .nav-tabs { order:3; width:100%; justify-content:center; }
+  .nav-actions { margin-left:auto; }
+  .nav-btn-label { display:none; }
+}
+.recover-pages-btn { display:block; flex-shrink:0; margin:8px 12px 12px; padding:9px; border:1px solid var(--line); border-radius:7px; font:inherit; font-size:11px; line-height:1.5; background:transparent; color:var(--muted); cursor:pointer; }
+.recover-pages-btn:hover { color:var(--text); border-color:var(--accent); }
+
+.study-page-status { color:var(--muted); font-size:12px; }
